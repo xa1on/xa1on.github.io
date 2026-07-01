@@ -176,13 +176,35 @@ function startConnection() {
         // Append simulated typed command to output
         printOutput('C:\\Users\\cli&gt; ssh root@chenghao.li');
         inputDisplay.textContent = '';
-
-        // Transition to logged in
-        loginState = 'LOGGED_IN';
-        terminalInput.disabled = false;
+        
         printMOTD();
-        updatePrompt();
-        focusInput();
+        
+        // Temporarily show prompt prefix for typing animation
+        promptPrefix.innerHTML = `<span class="color-accent">root@chenghao.li</span>:<span class="color-dir">~</span>#`;
+        
+        setTimeout(() => {
+          const lsText = 'ls';
+          let lsIndex = 0;
+          
+          const lsTypeEffect = setInterval(() => {
+            inputDisplay.textContent += lsText[lsIndex];
+            lsIndex++;
+            
+            if (lsIndex >= lsText.length) {
+              clearInterval(lsTypeEffect);
+              
+              setTimeout(async () => {
+                inputDisplay.textContent = '';
+                // Execute ls command
+                loginState = 'LOGGED_IN';
+                terminalInput.disabled = false;
+                await executeCommand('ls');
+                updatePrompt();
+                focusInput();
+              }, 400);
+            }
+          }, 100);
+        }, 600);
       }, 400); // short pause
     }
   }, 30); // Fast typing simulation
@@ -220,14 +242,21 @@ async function executeCommand(cmdStr) {
       const currentDir = getNodeByPath(currentPath);
       if (currentDir && typeof currentDir === 'object') {
         const items = Object.keys(currentDir);
-        if (items.length === 0) {
+        const formattedItems = items.map(name => {
+          const isDir = typeof currentDir[name] === 'object';
+          return isDir 
+            ? `<span class="color-dir ls-item" data-type="dir" data-name="${name}">${name}/</span>` 
+            : `<span class="color-file ls-item" data-type="file" data-name="${name}">${name}</span>`;
+        });
+        
+        // Add parent directory link if not in root
+        if (currentPath.length > 0) {
+          formattedItems.unshift(`<span class="color-dir ls-item" data-type="dir" data-name="..">../</span>`);
+        }
+        
+        if (formattedItems.length === 0) {
           printOutput('');
         } else {
-          // Highlight directories in blue, files in standard text
-          const formattedItems = items.map(name => {
-            const isDir = typeof currentDir[name] === 'object';
-            return isDir ? `<span class="color-dir">${name}/</span>` : `<span class="color-file">${name}</span>`;
-          });
           printOutput(formattedItems.join('   '));
         }
       } else {
@@ -371,6 +400,29 @@ terminalInput.addEventListener('keydown', async (e) => {
 // Focus input on click anywhere inside the terminal window
 document.addEventListener('click', (e) => {
   focusInput();
+});
+
+// Intercept clicks on interactive ls items
+document.addEventListener('click', async (e) => {
+  const target = e.target;
+  if (target && target.classList.contains('ls-item')) {
+    e.stopPropagation();
+    
+    // Only allow interaction if logged in
+    if (loginState !== 'LOGGED_IN') return;
+    
+    const type = target.getAttribute('data-type');
+    const name = target.getAttribute('data-name');
+    
+    if (type === 'dir') {
+      // Execute cd [dir] followed by ls
+      await handleInputSubmit(`cd ${name}`);
+      await handleInputSubmit('ls');
+    } else if (type === 'file') {
+      // Execute cat [file]
+      await handleInputSubmit(`cat ${name}`);
+    }
+  }
 });
 
 // Initial boot initialization on load
