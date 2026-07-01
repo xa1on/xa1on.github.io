@@ -92,12 +92,6 @@ function getNodeByPath(pathArr) {
   return node;
 }
 
-/**
- * Returns formatted absolute path string for prompt representation
- */
-function getPathString() {
-  return '/' + currentPath.join('/');
-}
 
 /**
  * Writes a new line of text (or HTML) to the terminal history
@@ -219,7 +213,6 @@ async function executeCommand(cmdStr) {
   <span class="color-accent">clear</span>          Clear the terminal screen.
   <span class="color-accent">whoami</span>         Print the current session user name.
   <span class="color-accent">date</span>           Display the current system date and time.
-  <span class="color-accent">exit</span>           Close the SSH session.
 `);
       break;
 
@@ -307,16 +300,6 @@ async function executeCommand(cmdStr) {
       break;
 
 
-    case 'exit':
-      printOutput('Closing connection to chenghao.li...', 'color-dim');
-      setTimeout(() => {
-        terminalOutput.innerHTML = '';
-        printOutput('SSH Session closed. Connection terminated.', 'color-dim');
-        printOutput('Press [Enter] to reconnect.', 'color-accent');
-        loginState = 'CONNECTING';
-        updatePrompt();
-      }, 600);
-      break;
 
     default:
       printOutput(`command not found: ${command}. Type 'help' to see list of commands.`, 'color-error');
@@ -372,13 +355,7 @@ async function handleInputSubmit(val) {
 
 // Capture key entries in the hidden input and mirror to screen
 terminalInput.addEventListener('input', (e) => {
-  const val = e.target.value;
-  if (loginState === 'PASSWORD') {
-    // Hide password characters
-    inputDisplay.textContent = '';
-  } else {
-    inputDisplay.textContent = val;
-  }
+  inputDisplay.textContent = e.target.value;
 });
 
 // Capture Enter press for submit
