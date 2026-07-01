@@ -141,7 +141,7 @@ function printMOTD() {
 System information at ${currentTimestamp}:
   System load:  0.15               Processes:             108
   Usage of /:   38.4% of 50GB      Users logged in:       2
-  Memory usage: 12%                IPv4 address for eth0: [IP_ADDRESS]
+  Memory usage: 12%                IPv4 address for eth0: 192.168.1.104
 `, 'color-dim');
   printOutput(`
 Type <span class="color-accent">help</span> to view available terminal commands.
