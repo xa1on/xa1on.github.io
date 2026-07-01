@@ -1,0 +1,347 @@
+:root {
+  --bg-color: #0c0d10;
+  --text-color: #ffffff;
+  --glow-color: rgba(255, 255, 255, 0.15);
+  --cursor-color: #ffffff;
+  --accent-color: #ffffff;
+  --error-color: #ff7b72;
+  --dir-color: #58a6ff;
+  --link-color: #58a6ff;
+  --dim-color: rgba(255, 255, 255, 0.6);
+  --crt-scanlines: rgba(0, 0, 0, 0.15);
+}
+
+/* ==========================================
+   Base Layout & Reset
+   ========================================== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Fira Code', 'Courier New', Courier, monospace;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Fira Code', 'Courier New', Courier, monospace;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+/* ==========================================
+   futuristic grid background
+   ========================================== */
+.grid-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center center;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ==========================================
+   CRT Scanline and Flicker Effects
+   ========================================== */
+.scanlines {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(var(--crt-scanlines) 50%,
+      rgba(0, 0, 0, 0.25) 50%);
+  background-size: 100% 4px;
+  z-index: 999;
+  pointer-events: none;
+}
+
+.crt-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('assets/overlays/crt.png');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  mix-blend-mode: difference;
+  opacity: 0.1;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+/* Screen Flicker Animation */
+.screen-flicker {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(18, 16, 16, 0.1);
+  opacity: 0;
+  z-index: 998;
+  pointer-events: none;
+  animation: flicker 0.15s infinite;
+}
+
+@keyframes flicker {
+  0% {
+    opacity: 0.18;
+  }
+
+  50% {
+    opacity: 0.22;
+  }
+
+  100% {
+    opacity: 0.18;
+  }
+}
+
+/* ==========================================
+   Fullscreen Terminal Viewport
+   ========================================== */
+.terminal-body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 30px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  font-size: 1rem;
+  line-height: 1.2;
+  text-shadow: 0 0 4px var(--glow-color);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(31, 240, 66, 0.3) transparent;
+  z-index: 5;
+}
+
+/* Custom Scrollbar for Webkit */
+.terminal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.terminal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.terminal-body::-webkit-scrollbar-thumb {
+  background: rgba(31, 240, 66, 0.3);
+  border-radius: 4px;
+}
+
+.terminal-body::-webkit-scrollbar-thumb:hover {
+  background: var(--text-color);
+}
+
+.terminal-output {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Text coloring classes */
+.color-text {
+  color: var(--text-color);
+}
+
+.color-dir {
+  color: var(--dir-color);
+  font-weight: 700;
+  text-shadow: 0 0 5px rgba(0, 255, 255, 0.4);
+}
+
+.color-file {
+  color: var(--text-color);
+}
+
+.color-link {
+  color: var(--link-color);
+  text-decoration: underline;
+  cursor: pointer;
+  transition: text-shadow 0.2s ease;
+}
+
+.color-link:hover {
+  text-shadow: 0 0 8px var(--link-color);
+}
+
+.color-error {
+  color: var(--error-color);
+  text-shadow: 0 0 6px rgba(255, 60, 60, 0.5);
+}
+
+.color-accent {
+  color: var(--accent-color);
+  font-weight: bold;
+}
+
+.color-dim {
+  color: var(--dim-color);
+  opacity: 0.8;
+}
+
+/* Custom Inline Preset Colors */
+.color-blue,
+.blue {
+  color: #58a6ff;
+  text-shadow: 0 0 4px rgba(88, 166, 255, 0.4);
+}
+
+.color-green,
+.green {
+  color: #7ee787;
+  text-shadow: 0 0 4px rgba(126, 231, 135, 0.4);
+}
+
+.color-red,
+.red {
+  color: #ff1100;
+  text-shadow: 0 0 4px rgba(255, 123, 114, 0.4);
+}
+
+.color-yellow,
+.yellow {
+  color: #d29922;
+  text-shadow: 0 0 4px rgba(210, 153, 34, 0.4);
+}
+
+.color-cyan,
+.cyan {
+  color: #39c5cf;
+  text-shadow: 0 0 4px rgba(57, 197, 207, 0.4);
+}
+
+.color-magenta,
+.magenta {
+  color: #d859c7;
+  text-shadow: 0 0 4px rgba(216, 89, 199, 0.4);
+}
+
+.color-white,
+.white {
+  color: #ffffff;
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.2);
+}
+
+/* ==========================================
+   Interactive Input Line & Cursor
+   ========================================== */
+.terminal-input-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.prompt-prefix {
+  color: var(--accent-color);
+  font-weight: 600;
+  user-select: none;
+}
+
+.input-container {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-display {
+  white-space: pre;
+  word-break: break-all;
+  display: inline-block;
+  min-height: 1.2em;
+}
+
+.terminal-cursor {
+  display: inline-block;
+  width: 9px;
+  height: 17px;
+  background-color: var(--cursor-color);
+  box-shadow: 0 0 6px var(--cursor-color);
+  animation: blink 1s step-end infinite;
+  margin-left: 2px;
+}
+
+@keyframes blink {
+
+  from,
+  to {
+    background-color: transparent;
+    box-shadow: none;
+  }
+
+  50% {
+    background-color: var(--cursor-color);
+    box-shadow: 0 0 6px var(--cursor-color);
+  }
+}
+
+/* Hidden Real Input Field */
+#terminal-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  font-family: inherit;
+  font-size: 16px;
+  /* Prevents auto-zoom on iOS */
+  pointer-events: auto;
+  z-index: 10;
+}
+
+/* ==========================================
+   ASCII Banner styling
+   ========================================== */
+.ascii-banner {
+  font-family: monospace;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  white-space: pre;
+  color: var(--accent-color);
+  margin-bottom: 12px;
+  text-shadow: 0 0 6px var(--glow-color);
+}
+
+@media(min-width: 600px) {
+  .ascii-banner {
+    font-size: 0.9rem;
+  }
+}
+
+/* ==========================================
+   Responsive Rules
+   ========================================== */
+@media (max-width: 768px) {
+  .terminal-body {
+    padding: 16px;
+    font-size: 0.9rem;
+  }
+
+  .terminal-cursor {
+    height: 15px;
+    width: 8px;
+  }
+}
