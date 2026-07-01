@@ -234,16 +234,19 @@ async function executeCommand(cmdStr) {
       const currentDir = getNodeByPath(currentPath);
       if (currentDir && typeof currentDir === 'object') {
         const items = Object.keys(currentDir);
+        const currentPathStr = currentPath.join('/');
         const formattedItems = items.map(name => {
           const isDir = typeof currentDir[name] === 'object';
+          const absolutePath = '/' + (currentPathStr ? currentPathStr + '/' : '') + name;
           return isDir
-            ? `<span class="color-dir ls-item" data-type="dir" data-name="${name}">${name}/</span>`
-            : `<span class="color-file ls-item" data-type="file" data-name="${name}">${name}</span>`;
+            ? `<span class="color-dir ls-item" data-type="dir" data-path="${absolutePath}">${name}/</span>`
+            : `<span class="color-file ls-item" data-type="file" data-path="${absolutePath}">${name}</span>`;
         });
 
         // Add parent directory link if not in root
         if (currentPath.length > 0) {
-          formattedItems.unshift(`<span class="color-dir ls-item" data-type="dir" data-name="..">../</span>`);
+          const parentPath = '/' + currentPath.slice(0, -1).join('/');
+          formattedItems.unshift(`<span class="color-dir ls-item" data-type="dir" data-path="${parentPath}">../</span>`);
         }
 
         if (formattedItems.length === 0) {
@@ -355,6 +358,30 @@ function resolvePath(pathStr) {
     return null;
   }
   return target;
+}
+
+/**
+ * Computes the relative path from fromPath array to toPath array.
+ */
+function getRelativePath(fromPath, toPath) {
+  let commonCount = 0;
+  while (commonCount < fromPath.length && commonCount < toPath.length && fromPath[commonCount] === toPath[commonCount]) {
+    commonCount++;
+  }
+
+  const upSegments = fromPath.length - commonCount;
+  const downSegments = toPath.slice(commonCount);
+
+  const segments = [];
+  for (let i = 0; i < upSegments; i++) {
+    segments.push('..');
+  }
+  segments.push(...downSegments);
+
+  if (segments.length === 0) {
+    return '.';
+  }
+  return segments.join('/');
 }
 
 /**
@@ -523,15 +550,21 @@ document.addEventListener('click', async (e) => {
     if (loginState !== 'LOGGED_IN') return;
 
     const type = target.getAttribute('data-type');
-    const name = target.getAttribute('data-name');
+    const path = target.getAttribute('data-path');
 
-    if (type === 'dir') {
-      // Execute cd [dir] followed by ls
-      await handleInputSubmit(`cd ${name}`);
-      await handleInputSubmit('ls');
-    } else if (type === 'file') {
-      // Execute cat [file]
-      await handleInputSubmit(`cat ${name}`);
+    if (path) {
+      // Resolve path into segment array
+      const targetPathArr = path.split('/').filter(s => s.length > 0);
+      const relativePath = getRelativePath(currentPath, targetPathArr);
+
+      if (type === 'dir') {
+        // Execute cd [relative_path] followed by ls
+        await handleInputSubmit(`cd ${relativePath}`);
+        await handleInputSubmit('ls');
+      } else if (type === 'file') {
+        // Execute cat [relative_path]
+        await handleInputSubmit(`cat ${relativePath}`);
+      }
     }
   }
 });
