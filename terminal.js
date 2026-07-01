@@ -10,7 +10,7 @@ const virtualFS = {
 
 // State Variables
 let currentPath = []; // Array of directory names representing current folder path
-let loginState = 'BOOTING'; // BOOTING | LOGGED_IN | CONNECTING
+let loginState = 'BOOTING'; // BOOTING | LOGGED_IN
 let currentUsername = 'root';
 const commandHistory = [];
 let historyIndex = -1;
@@ -134,24 +134,16 @@ function printMOTD() {
   const now = new Date();
   const currentTimestamp = now.toString();
 
-  printOutput(`Welcome to Ubuntu 24.04 LTS (GNU/Linux 6.8.0-31-generic x86_64)
-
- * Documentation:  <a href="https://help.ubuntu.com" class="color-link" target="_blank">https://help.ubuntu.com</a>
- * Management:     <a href="https://landscape.canonical.com" class="color-link" target="_blank">https://landscape.canonical.com</a>
- * Support:        <a href="https://ubuntu.com/pro" class="color-link" target="_blank">https://ubuntu.com/pro</a>
-
-System information at ${currentTimestamp}:
-
-  System load:  0.15               Processes:             108
-  Usage of /:   38.4% of 50GB      Users logged in:       1
-  Memory usage: 12%                IPv4 address for eth0: 192.168.1.104
-
-Last login: ${new Date(now.getTime() - 24 * 60 * 60 * 1000).toDateString()} from 127.0.0.1
-`, 'color-dim');
-
+  printOutput(`Arch Linux 6.9.3-arch1-1 (tty1)`, 'color-dim');
+  printOutput(`\n  >>> <span class="color-blue">Welcome, root@chenghao.li!</span> <<<`, 'color-accent');
   printOutput(asciiArt, 'color-accent');
-  printOutput(`Chenghao Li (xa1on) - Virtual Server Instance v1.2.4
-
+  printOutput(`
+System information at ${currentTimestamp}:
+  System load:  0.15               Processes:             108
+  Usage of /:   38.4% of 50GB      Users logged in:       2
+  Memory usage: 12%                IPv4 address for eth0: [IP_ADDRESS]
+`, 'color-dim');
+  printOutput(`
 Type <span class="color-accent">help</span> to view available terminal commands.
 `);
 }
@@ -178,23 +170,23 @@ function startConnection() {
         // Append simulated typed command to output
         printOutput('C:\\Users\\cli&gt; ssh root@chenghao.li');
         inputDisplay.textContent = '';
-        
+
         printMOTD();
-        
+
         // Temporarily show prompt prefix for typing animation
         promptPrefix.innerHTML = `<span class="color-accent">root@chenghao.li</span>:<span class="color-dir">~</span>#`;
-        
+
         setTimeout(() => {
           const lsText = 'ls';
           let lsIndex = 0;
-          
+
           const lsTypeEffect = setInterval(() => {
             inputDisplay.textContent += lsText[lsIndex];
             lsIndex++;
-            
+
             if (lsIndex >= lsText.length) {
               clearInterval(lsTypeEffect);
-              
+
               setTimeout(async () => {
                 inputDisplay.textContent = '';
                 // Execute ls command
@@ -244,16 +236,16 @@ async function executeCommand(cmdStr) {
         const items = Object.keys(currentDir);
         const formattedItems = items.map(name => {
           const isDir = typeof currentDir[name] === 'object';
-          return isDir 
-            ? `<span class="color-dir ls-item" data-type="dir" data-name="${name}">${name}/</span>` 
+          return isDir
+            ? `<span class="color-dir ls-item" data-type="dir" data-name="${name}">${name}/</span>`
             : `<span class="color-file ls-item" data-type="file" data-name="${name}">${name}</span>`;
         });
-        
+
         // Add parent directory link if not in root
         if (currentPath.length > 0) {
           formattedItems.unshift(`<span class="color-dir ls-item" data-type="dir" data-name="..">../</span>`);
         }
-        
+
         if (formattedItems.length === 0) {
           printOutput('');
         } else {
@@ -401,7 +393,7 @@ function handleTabAutocomplete() {
     const activeCommand = parts[0].toLowerCase();
     // The argument is everything after the command
     const argVal = parts.slice(1).join(' ');
-    
+
     // We split the path string by '/' to handle nested folders
     const slashIdx = argVal.lastIndexOf('/');
     let targetPath = [...currentPath];
@@ -410,7 +402,7 @@ function handleTabAutocomplete() {
     if (slashIdx !== -1) {
       const pathPrefix = argVal.slice(0, slashIdx);
       prefix = argVal.slice(slashIdx + 1);
-      
+
       const resolvedPrefixPath = resolvePath(pathPrefix);
       if (resolvedPrefixPath === null) {
         return; // Invalid path prefix, can't autocomplete
@@ -436,7 +428,7 @@ function handleTabAutocomplete() {
       const matchedName = matches[0];
       const isDirNode = matchedName === '..' || typeof targetDir[matchedName] === 'object';
       const completedArg = (slashIdx !== -1 ? argVal.slice(0, slashIdx + 1) : '') + matchedName + (isDirNode ? '/' : ' ');
-      
+
       terminalInput.value = parts[0] + ' ' + completedArg;
       inputDisplay.textContent = terminalInput.value;
     } else if (matches.length > 1) {
@@ -446,7 +438,7 @@ function handleTabAutocomplete() {
         return isDirNode ? `<span class="color-dir">${matchedName}/</span>` : `<span class="color-file">${matchedName}</span>`;
       });
       printOutput(formattedMatches.join('    '));
-      
+
       const displayPath = currentPath.length === 0 ? '~' : '/' + currentPath.join('/');
       printOutput(`<span class="color-accent">${currentUsername}@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${currentVal}`);
     }
@@ -457,24 +449,22 @@ function handleTabAutocomplete() {
  * Handle form submissions / pressing enter
  */
 async function handleInputSubmit(val) {
-  if (loginState === 'LOGGED_IN') {
-    const trimmed = val.trim();
-    if (trimmed !== '') {
-      // Add to history if empty or different from the last entry
-      if (commandHistory.length === 0 || commandHistory[commandHistory.length - 1] !== trimmed) {
-        commandHistory.push(trimmed);
-      }
-      historyIndex = commandHistory.length;
+  if (loginState !== 'LOGGED_IN') return;
+
+  const trimmed = val.trim();
+  if (trimmed !== '') {
+    // Add to history if empty or different from the last entry
+    if (commandHistory.length === 0 || commandHistory[commandHistory.length - 1] !== trimmed) {
+      commandHistory.push(trimmed);
     }
-    
-    inputLine.style.visibility = 'hidden';
-    await executeCommand(val);
-    inputLine.style.visibility = 'visible';
-    updatePrompt();
-    focusInput();
-  } else if (loginState === 'CONNECTING') {
-    startConnection();
+    historyIndex = commandHistory.length;
   }
+
+  inputLine.style.visibility = 'hidden';
+  await executeCommand(val);
+  inputLine.style.visibility = 'visible';
+  updatePrompt();
+  focusInput();
 }
 
 // Event Listeners
@@ -528,13 +518,13 @@ document.addEventListener('click', async (e) => {
   const target = e.target;
   if (target && target.classList.contains('ls-item')) {
     e.stopPropagation();
-    
+
     // Only allow interaction if logged in
     if (loginState !== 'LOGGED_IN') return;
-    
+
     const type = target.getAttribute('data-type');
     const name = target.getAttribute('data-name');
-    
+
     if (type === 'dir') {
       // Execute cd [dir] followed by ls
       await handleInputSubmit(`cd ${name}`);
