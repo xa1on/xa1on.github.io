@@ -12,6 +12,8 @@ const virtualFS = {
 let currentPath = []; // Array of directory names representing current folder path
 let loginState = 'BOOTING'; // BOOTING | LOGGED_IN | CONNECTING
 let currentUsername = 'root';
+const commandHistory = [];
+let historyIndex = -1;
 
 // DOM Cache
 const terminalBody = document.getElementById('terminal-body');
@@ -198,9 +200,7 @@ function startConnection() {
                 // Execute ls command
                 loginState = 'LOGGED_IN';
                 terminalInput.disabled = false;
-                await executeCommand('ls');
-                updatePrompt();
-                focusInput();
+                await handleInputSubmit('ls');
               }, 400);
             }
           }, 100);
@@ -366,10 +366,107 @@ function resolvePath(pathStr) {
 }
 
 /**
+ * Tab Autocomplete logic
+ * Autocompletes matching commands and files/directories in currentPath, case-insensitively
+ */
+function handleTabAutocomplete() {
+  const currentVal = terminalInput.value;
+  const trimmed = currentVal.trimStart();
+  if (trimmed === '') return;
+
+  // Split by space. We want to autocomplete the last token.
+  // Note: if there's no space in the trimmed string, we are autocompleting the command itself.
+  const parts = currentVal.split(/\s+/);
+  const isCommandOnly = parts.length === 1;
+
+  if (isCommandOnly) {
+    // Autocomplete commands
+    const typedCmd = parts[0].toLowerCase();
+    const availableCmds = ['help', 'ls', 'cd', 'cat', 'clear', 'whoami', 'date'];
+    const matches = availableCmds.filter(cmd => cmd.startsWith(typedCmd));
+
+    if (matches.length === 1) {
+      // Single match: complete it with a space at the end
+      terminalInput.value = matches[0] + ' ';
+      inputDisplay.textContent = terminalInput.value;
+    } else if (matches.length > 1) {
+      // Multiple matches: list them horizontally, reprint prompt line
+      printOutput(matches.join('    '), 'color-accent');
+      // Reprint prompt log
+      const displayPath = currentPath.length === 0 ? '~' : '/' + currentPath.join('/');
+      printOutput(`<span class="color-accent">${currentUsername}@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${currentVal}`);
+    }
+  } else {
+    // Autocomplete file/path arguments (for commands like cd and cat)
+    const activeCommand = parts[0].toLowerCase();
+    // The argument is everything after the command
+    const argVal = parts.slice(1).join(' ');
+    
+    // We split the path string by '/' to handle nested folders
+    const slashIdx = argVal.lastIndexOf('/');
+    let targetPath = [...currentPath];
+    let prefix = argVal;
+
+    if (slashIdx !== -1) {
+      const pathPrefix = argVal.slice(0, slashIdx);
+      prefix = argVal.slice(slashIdx + 1);
+      
+      const resolvedPrefixPath = resolvePath(pathPrefix);
+      if (resolvedPrefixPath === null) {
+        return; // Invalid path prefix, can't autocomplete
+      }
+      targetPath = resolvedPrefixPath;
+    }
+
+    const targetDir = getNodeByPath(targetPath);
+    if (!targetDir || typeof targetDir !== 'object') return;
+
+    const dirKeys = Object.keys(targetDir);
+    // Support parent directory traversal symbol if not in root
+    if (targetPath.length > 0) {
+      dirKeys.push('..');
+    }
+
+    // Filter matches case-insensitively
+    const prefixLower = prefix.toLowerCase();
+    const matches = dirKeys.filter(key => key.toLowerCase().startsWith(prefixLower));
+
+    if (matches.length === 1) {
+      // Single match: complete it
+      const matchedName = matches[0];
+      const isDirNode = matchedName === '..' || typeof targetDir[matchedName] === 'object';
+      const completedArg = (slashIdx !== -1 ? argVal.slice(0, slashIdx + 1) : '') + matchedName + (isDirNode ? '/' : ' ');
+      
+      terminalInput.value = parts[0] + ' ' + completedArg;
+      inputDisplay.textContent = terminalInput.value;
+    } else if (matches.length > 1) {
+      // Multiple matches: list them horizontally, print prompt
+      const formattedMatches = matches.map(matchedName => {
+        const isDirNode = matchedName === '..' || typeof targetDir[matchedName] === 'object';
+        return isDirNode ? `<span class="color-dir">${matchedName}/</span>` : `<span class="color-file">${matchedName}</span>`;
+      });
+      printOutput(formattedMatches.join('    '));
+      
+      const displayPath = currentPath.length === 0 ? '~' : '/' + currentPath.join('/');
+      printOutput(`<span class="color-accent">${currentUsername}@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${currentVal}`);
+    }
+  }
+}
+
+/**
  * Handle form submissions / pressing enter
  */
 async function handleInputSubmit(val) {
   if (loginState === 'LOGGED_IN') {
+    const trimmed = val.trim();
+    if (trimmed !== '') {
+      // Add to history if empty or different from the last entry
+      if (commandHistory.length === 0 || commandHistory[commandHistory.length - 1] !== trimmed) {
+        commandHistory.push(trimmed);
+      }
+      historyIndex = commandHistory.length;
+    }
+    
     inputLine.style.visibility = 'hidden';
     await executeCommand(val);
     inputLine.style.visibility = 'visible';
@@ -387,13 +484,37 @@ terminalInput.addEventListener('input', (e) => {
   inputDisplay.textContent = e.target.value;
 });
 
-// Capture Enter press for submit
+// Capture special key entries for History and Autocomplete
 terminalInput.addEventListener('keydown', async (e) => {
   if (e.key === 'Enter') {
     const val = terminalInput.value;
     terminalInput.value = '';
     inputDisplay.textContent = '';
     await handleInputSubmit(val);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (loginState !== 'LOGGED_IN') return;
+    if (commandHistory.length > 0 && historyIndex > 0) {
+      historyIndex--;
+      terminalInput.value = commandHistory[historyIndex];
+      inputDisplay.textContent = commandHistory[historyIndex];
+    }
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (loginState !== 'LOGGED_IN') return;
+    if (historyIndex < commandHistory.length - 1) {
+      historyIndex++;
+      terminalInput.value = commandHistory[historyIndex];
+      inputDisplay.textContent = commandHistory[historyIndex];
+    } else if (historyIndex === commandHistory.length - 1) {
+      historyIndex = commandHistory.length;
+      terminalInput.value = '';
+      inputDisplay.textContent = '';
+    }
+  } else if (e.key === 'Tab') {
+    e.preventDefault();
+    if (loginState !== 'LOGGED_IN') return;
+    handleTabAutocomplete();
   }
 });
 
