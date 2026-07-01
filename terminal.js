@@ -113,7 +113,7 @@ function printOutput(htmlContent, className = 'color-text') {
 function updatePrompt() {
   if (loginState === 'LOGGED_IN') {
     const displayPath = currentPath.length === 0 ? '~' : '/' + currentPath.join('/');
-    promptPrefix.innerHTML = `<span class="color-accent">${currentUsername}@chenghao.li</span>:<span class="color-dir">${displayPath}</span>#`;
+    promptPrefix.innerHTML = `<span class="color-accent"><span class="red">${currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span>#`;
     inputDisplay.textContent = '';
     terminalInput.value = '';
   } else if (loginState === 'CONNECTING') {
@@ -154,7 +154,7 @@ Type <span class="color-accent">help</span> to view available terminal commands.
 function startConnection() {
   loginState = 'BOOTING';
   terminalInput.disabled = true;
-  promptPrefix.textContent = 'C:\\Users\\cli>';
+  promptPrefix.innerHTML = '<span class="color-accent">C:\\Users\\cli&gt;</span>';
   inputDisplay.textContent = '';
 
   const cmdText = 'ssh root@chenghao.li';
@@ -168,13 +168,13 @@ function startConnection() {
 
       setTimeout(() => {
         // Append simulated typed command to output
-        printOutput('C:\\Users\\cli&gt; ssh root@chenghao.li');
+        printOutput('<span class="color-accent">C:\\Users\\cli&gt;</span> ssh root@chenghao.li');
         inputDisplay.textContent = '';
 
         printMOTD();
 
         // Temporarily show prompt prefix for typing animation
-        promptPrefix.innerHTML = `<span class="color-accent">root@chenghao.li</span>:<span class="color-dir">~</span>#`;
+        promptPrefix.innerHTML = `<span class="color-accent"><span class="red">root</span>@chenghao.li</span>:<span class="color-dir">~</span>#`;
 
         setTimeout(() => {
           const lsText = 'ls';
@@ -211,7 +211,7 @@ async function executeCommand(cmdStr) {
 
   // Print command to output history
   const displayPath = currentPath.length === 0 ? '~' : '/' + currentPath.join('/');
-  printOutput(`<span class="color-accent">${currentUsername}@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${trimmed}`);
+  printOutput(`<span class="color-accent"><span class="red">${currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${trimmed}`);
 
   // Split arguments
   const parts = trimmed.split(/\s+/);
@@ -386,7 +386,7 @@ function handleTabAutocomplete() {
       printOutput(matches.join('    '), 'color-accent');
       // Reprint prompt log
       const displayPath = currentPath.length === 0 ? '~' : '/' + currentPath.join('/');
-      printOutput(`<span class="color-accent">${currentUsername}@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${currentVal}`);
+      printOutput(`<span class="color-accent"><span class="red">${currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${currentVal}`);
     }
   } else {
     // Autocomplete file/path arguments (for commands like cd and cat)
@@ -440,7 +440,7 @@ function handleTabAutocomplete() {
       printOutput(formattedMatches.join('    '));
 
       const displayPath = currentPath.length === 0 ? '~' : '/' + currentPath.join('/');
-      printOutput(`<span class="color-accent">${currentUsername}@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${currentVal}`);
+      printOutput(`<span class="color-accent"><span class="red">${currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${currentVal}`);
     }
   }
 }

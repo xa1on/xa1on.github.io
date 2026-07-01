@@ -274,7 +274,6 @@ body {
 
 .prompt-prefix {
   color: var(--accent-color);
-  font-weight: 600;
   user-select: none;
 }
 
