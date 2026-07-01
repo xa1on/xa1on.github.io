@@ -34,7 +34,7 @@ const asciiArt = `
             @@@@@@@@@@@            
            @@@@@@ @@@@@@           
                    @@@@@@          
-                    @@@@@@          | arch4ic
+                    @@@@@@          | <span class="blue">arch</span>4ic
                      @@@@@@        
        <span class="red">#########</span>      @@@@@@       
       <span class="red">############</span>     @@@@@@      
@@ -135,7 +135,7 @@ function printMOTD() {
   const currentTimestamp = now.toString();
 
   printOutput(`Arch Linux 6.9.3-arch1-1 (tty1)`, 'color-dim');
-  printOutput(`\n  >>> <span class="color-blue">Welcome, root@chenghao.li!</span> <<<`, 'color-accent');
+  printOutput(`\n  >>> <span class="blue">Welcome, root@chenghao.li!</span> <<<`, 'color-accent');
   printOutput(asciiArt, 'color-accent');
   printOutput(`
 System information at ${currentTimestamp}:

@@ -1,6 +1,6 @@
-
-        **projects**
-
+<span class="blue">--------------------------------</span>
+	    **<span class="blue">Projects</span>**
+<span class="blue">--------------------------------</span>
 * **ArcEditor** | TypeScript, Llama.cpp | [GitHub Repo](https://github.com/xa1on/arceditor)
   * Created a context-aware Agentic co-pilot/harness for video editing in Adobe After Effects through ExtendScript.
   * Written entirely with 0 dependencies with hybrid compression/sliding window context management.
