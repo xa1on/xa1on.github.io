@@ -1,7 +1,7 @@
 :root {
   --bg-color: #0c0d10;
   --text-color: #ffffff;
-  --glow-color: rgba(255, 255, 255, 0.6);
+  --glow-color: rgba(255, 255, 255, 1);
   --cursor-color: #ffffff;
   --accent-color: #ffffff;
   --error-color: #ff7b72;
@@ -74,10 +74,18 @@ body {
   background-size: cover;
   background-repeat: no-repeat;
   background-position: center;
-  mix-blend-mode: difference;
-  opacity: 0.1;
   z-index: 1000;
   pointer-events: none;
+}
+
+.crt-overlay-difference {
+  mix-blend-mode: difference;
+  opacity: 0.05;
+}
+
+.crt-overlay-overlay {
+  mix-blend-mode: overlay;
+  opacity: 0.4;
 }
 
 /* Screen Flicker Animation */

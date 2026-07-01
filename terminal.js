@@ -195,11 +195,11 @@ function startConnection() {
                 await handleInputSubmit('ls');
               }, 400);
             }
-          }, 100);
+          }, 50);
         }, 600);
       }, 400); // short pause
     }
-  }, 30); // Fast typing simulation
+  }, 50); // Fast typing simulation
 }
 
 /**
