@@ -10,22 +10,33 @@ const virtualFS = {
 
 // State Variables
 let currentPath = []; // Array of directory names representing current folder path
-let loginState = 'BOOTING'; // BOOTING | LOGGED_IN
 let currentUsername = 'root';
 const commandHistory = [];
 let historyIndex = -1;
-const MAX_LINES = 150; // Keep the last 150 printed output lines to prevent DOM bloat and render lag
-let activeInputResolver = null;
-let pongGame = null;
 
-// DOM Cache
-const terminalBody = document.getElementById('terminal-body');
-const terminalOutput = document.getElementById('terminal-output');
-const inputLine = document.getElementById('input-line');
-const promptPrefix = document.getElementById('prompt-prefix');
-const inputDisplay = document.getElementById('input-display');
-const terminalInput = document.getElementById('terminal-input');
-const cursor = document.getElementById('cursor');
+// Expose state logic on the window.Terminal namespace
+window.Terminal.currentPath = currentPath;
+window.Terminal.currentUsername = currentUsername;
+
+Object.defineProperty(window, 'loginState', {
+  get() { return window.Terminal.loginState; },
+  set(val) { window.Terminal.loginState = val; }
+});
+
+// DOM Cache aliases linked to modular Terminal
+const terminalBody = window.Terminal.body;
+const terminalOutput = window.Terminal.output;
+const inputLine = window.Terminal.inputLine;
+const promptPrefix = window.Terminal.promptPrefix;
+const inputDisplay = window.Terminal.inputDisplay;
+const terminalInput = window.Terminal.input;
+const cursor = window.Terminal.cursor;
+
+// Compatibility wrappers for modular functions
+const printOutput = (html, cls) => window.Terminal.print(html, cls);
+const focusInput = () => window.Terminal.focus();
+const parseMarkdown = (txt) => window.Terminal.parseMarkdown(txt);
+const readInput = (prompt) => window.Terminal.readInput(prompt);
 
 // ASCII Art Banner
 const asciiArt = `
@@ -50,63 +61,6 @@ const asciiArt = `
                                    
 `;
 
-/**
- * Focus helper - keeps keyboard focus on terminal input
- */
-function focusInput() {
-  terminalInput.focus();
-}
-
-/**
- * Asynchronously prompts the user for custom input inline in the shell.
- * Can be used by any command or game.
- */
-function readInput(promptText) {
-  return new Promise((resolve) => {
-    const originalPrefixHTML = promptPrefix.innerHTML;
-    
-    // Temporarily show input line so user can type
-    inputLine.style.visibility = 'visible';
-    
-    promptPrefix.textContent = promptText;
-    terminalInput.value = '';
-    inputDisplay.textContent = '';
-    focusInput();
-    
-    activeInputResolver = (val) => {
-      // Hide input line again
-      inputLine.style.visibility = 'hidden';
-      promptPrefix.innerHTML = originalPrefixHTML;
-      resolve(val);
-    };
-  });
-}
-
-/**
- * Simple regex-based Markdown to Terminal HTML parser
- * Parses headers (# title -> bold text), **bold**, and [text](url) -> standard links
- */
-function parseMarkdown(text) {
-  const lines = text.split('\n');
-  const processedLines = lines.map(line => {
-    // 1. Headers: # Header -> <span class="color-accent">Header</span>
-    const headerMatch = line.match(/^(#+)\s*(.*)$/);
-    if (headerMatch) {
-      return `<span class="color-accent">${headerMatch[2]}</span>`;
-    }
-
-    let processed = line;
-    // 2. Bold text: **text** -> <span class="color-accent">text</span>
-    processed = processed.replace(/\*\*(.*?)\*\*/g, '<span class="color-accent">$1</span>');
-
-    // 3. Links: [label](url) -> <a href="$2" class="color-link" target="_blank">$1</a>
-    processed = processed.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="color-link" target="_blank">$1</a>');
-
-    return processed;
-  });
-
-  return processedLines.join('\n');
-}
 
 /**
  * Resolves path array to corresponding nested object or file contents in virtualFS
@@ -124,23 +78,6 @@ function getNodeByPath(pathArr) {
 }
 
 
-/**
- * Writes a new line of text (or HTML) to the terminal history
- */
-function printOutput(htmlContent, className = 'color-text') {
-  const line = document.createElement('div');
-  line.className = className;
-  line.innerHTML = htmlContent;
-  terminalOutput.appendChild(line);
-
-  // Keep DOM count under control to prevent long-term lag
-  while (terminalOutput.children.length > MAX_LINES) {
-    terminalOutput.removeChild(terminalOutput.firstChild);
-  }
-
-  // Auto-scroll to bottom of terminal
-  terminalBody.scrollTop = terminalBody.scrollHeight;
-}
 
 /**
  * Resets the prompt prefix label depending on current login state & directory
@@ -253,18 +190,30 @@ async function executeCommand(cmdStr) {
   const command = parts[0].toLowerCase();
   const args = parts.slice(1);
 
+  // Check modular game/command registry first
+  if (window.Terminal.games[command]) {
+    await window.Terminal.games[command].run(args);
+    return;
+  }
+
   switch (command) {
     case 'help':
-      printOutput(`Available Commands:
+      {
+        let helpText = `Available Commands:
   <span class="color-accent">ls</span>             List contents of the current directory.
   <span class="color-accent">cd [dir]</span>       Change the current working directory.
   <span class="color-accent">cat [file]</span>     Display the contents of a text file.
   <span class="color-accent">clear</span>          Clear the terminal screen.
   <span class="color-accent">whoami</span>         Print the current session user name.
   <span class="color-accent">date</span>           Display the current system date and time.
-  <span class="color-accent">ping [host]</span>    Simulate pinging a host.
-  <span class="color-accent">pong [level]</span>   Play a game of Pong (easy|medium|hard).
-`);
+  <span class="color-accent">ping [host]</span>    Simulate pinging a host.`;
+
+        for (const [name, game] of Object.entries(window.Terminal.games)) {
+          helpText += `\n  <span class="color-accent">${name.padEnd(14)}</span> ${game.helpText}`;
+        }
+
+        printOutput(helpText);
+      }
       break;
 
     case 'ls':
@@ -390,185 +339,6 @@ async function executeCommand(cmdStr) {
       }
       break;
 
-    case 'pong':
-      {
-        let diffText = args.length > 0 ? args[0].toLowerCase() : '';
-        while (diffText !== 'easy' && diffText !== 'medium' && diffText !== 'hard' && diffText !== '1' && diffText !== '2' && diffText !== '3') {
-          printOutput('Select difficulty:\n  [1] Easy\n  [2] Medium\n  [3] Hard');
-          const response = await readInput('Choose difficulty (1-3): ');
-          diffText = response.trim().toLowerCase();
-          if (diffText === '') {
-            printOutput('Pong cancelled.', 'color-dim');
-            return;
-          }
-        }
-
-        let difficulty = 'easy';
-        if (diffText === '2' || diffText === 'medium') difficulty = 'medium';
-        if (diffText === '3' || diffText === 'hard') difficulty = 'hard';
-
-        loginState = 'PONG';
-        
-        pongGame = {
-          playerY: 4,
-          cpuY: 4,
-          ballX: 22,
-          ballY: 5,
-          ballDx: Math.random() > 0.5 ? 1 : -1,
-          ballDy: Math.random() > 0.5 ? 0.5 : -0.5,
-          playerScore: 0,
-          cpuScore: 0,
-          boardWidth: 44,
-          boardHeight: 12,
-          paddleHeight: 3,
-          difficulty: difficulty,
-          gameOver: false
-        };
-
-        const gameContainer = document.createElement('pre');
-        gameContainer.style.fontFamily = 'monospace';
-        gameContainer.style.lineHeight = '1.15';
-        gameContainer.style.color = 'var(--text-color)';
-        terminalOutput.appendChild(gameContainer);
-
-        function drawPong() {
-          let board = '';
-          const width = pongGame.boardWidth;
-          const height = pongGame.boardHeight;
-          
-          board += '─'.repeat(width + 2) + '\n';
-          
-          for (let y = 0; y < height; y++) {
-            let line = '│';
-            for (let x = 0; x < width; x++) {
-              const isLeftPaddle = (x === 1) && (y >= pongGame.playerY && y < pongGame.playerY + pongGame.paddleHeight);
-              const isRightPaddle = (x === width - 2) && (y >= pongGame.cpuY && y < pongGame.cpuY + pongGame.paddleHeight);
-              const isBall = (x === Math.round(pongGame.ballX)) && (y === Math.round(pongGame.ballY));
-              
-              if (isLeftPaddle || isRightPaddle) {
-                line += '█';
-              } else if (isBall) {
-                line += '●';
-              } else {
-                line += ' ';
-              }
-            }
-            line += '│\n';
-            board += line;
-          }
-          
-          board += '─'.repeat(width + 2) + '\n';
-          board += ` Score: Player ${pongGame.playerScore} ║ CPU ${pongGame.cpuScore}   (Difficulty: ${pongGame.difficulty.toUpperCase()})\n`;
-          board += ` Controls: [ArrowUp]/[ArrowDown] to move. Press [Q] to quit.\n`;
-          
-          gameContainer.textContent = board;
-          terminalBody.scrollTop = terminalBody.scrollHeight;
-        }
-
-        drawPong();
-
-        function resetBall(direction) {
-          pongGame.ballX = Math.floor(pongGame.boardWidth / 2);
-          pongGame.ballY = Math.floor(pongGame.boardHeight / 2);
-          pongGame.ballDx = direction;
-          pongGame.ballDy = Math.random() > 0.5 ? 0.5 : -0.5;
-        }
-
-        await new Promise((resolve) => {
-          const gameInterval = setInterval(() => {
-            if (pongGame.gameOver) {
-              clearInterval(gameInterval);
-              resolve();
-              return;
-            }
-
-            // Move Ball
-            pongGame.ballX += pongGame.ballDx;
-            pongGame.ballY += pongGame.ballDy;
-
-            // Bounce top/bottom
-            if (pongGame.ballY <= 0) {
-              pongGame.ballY = 0;
-              pongGame.ballDy = -pongGame.ballDy;
-            } else if (pongGame.ballY >= pongGame.boardHeight - 1) {
-              pongGame.ballY = pongGame.boardHeight - 1;
-              pongGame.ballDy = -pongGame.ballDy;
-            }
-
-            // Left paddle collision
-            if (pongGame.ballX <= 2 && pongGame.ballDx < 0) {
-              if (pongGame.ballY >= pongGame.playerY && pongGame.ballY < pongGame.playerY + pongGame.paddleHeight) {
-                pongGame.ballX = 2;
-                pongGame.ballDx = 1;
-                const hitPos = pongGame.ballY - pongGame.playerY;
-                if (hitPos === 0) pongGame.ballDy = -0.75;
-                else if (hitPos === 2) pongGame.ballDy = 0.75;
-                else pongGame.ballDy = (Math.random() > 0.5 ? 0.5 : -0.5);
-              }
-            }
-
-            // Right paddle collision
-            if (pongGame.ballX >= pongGame.boardWidth - 3 && pongGame.ballDx > 0) {
-              if (pongGame.ballY >= pongGame.cpuY && pongGame.ballY < pongGame.cpuY + pongGame.paddleHeight) {
-                pongGame.ballX = pongGame.boardWidth - 3;
-                pongGame.ballDx = -1;
-                const hitPos = pongGame.ballY - pongGame.cpuY;
-                if (hitPos === 0) pongGame.ballDy = -0.75;
-                else if (hitPos === 2) pongGame.ballDy = 0.75;
-                else pongGame.ballDy = (Math.random() > 0.5 ? 0.5 : -0.5);
-              }
-            }
-
-            // CPU AI movement
-            const ballTarget = pongGame.ballY;
-            const cpuCenter = pongGame.cpuY + 1;
-            let moveProbability = 0.45;
-            if (pongGame.difficulty === 'medium') moveProbability = 0.70;
-            if (pongGame.difficulty === 'hard') moveProbability = 0.92;
-
-            if (Math.random() < moveProbability) {
-              if (cpuCenter < ballTarget) {
-                pongGame.cpuY = Math.min(pongGame.boardHeight - pongGame.paddleHeight, pongGame.cpuY + 1);
-              } else if (cpuCenter > ballTarget) {
-                pongGame.cpuY = Math.max(0, pongGame.cpuY - 1);
-              }
-            }
-
-            // Point scoring
-            if (pongGame.ballX < 0) {
-              pongGame.cpuScore++;
-              if (pongGame.cpuScore >= 5) {
-                pongGame.gameOver = true;
-              } else {
-                resetBall(1);
-              }
-            } else if (pongGame.ballX >= pongGame.boardWidth) {
-              pongGame.playerScore++;
-              if (pongGame.playerScore >= 5) {
-                pongGame.gameOver = true;
-              } else {
-                resetBall(-1);
-              }
-            }
-
-            drawPong();
-          }, 80);
-        });
-
-        loginState = 'LOGGED_IN';
-        if (pongGame.playerScore >= 5) {
-          printOutput('Congratulations! You won the match! 🎉', 'color-green');
-        } else if (pongGame.cpuScore >= 5) {
-          printOutput('Game Over! The CPU won the match. 🤖', 'color-error');
-        } else {
-          printOutput('Pong game terminated.', 'color-dim');
-        }
-        pongGame = null;
-      }
-      break;
-
-
-
     default:
       printOutput(`command not found: ${command}. Type 'help' to see list of commands.`, 'color-error');
   }
@@ -645,7 +415,7 @@ function handleTabAutocomplete() {
   if (isCommandOnly) {
     // Autocomplete commands
     const typedCmd = parts[0].toLowerCase();
-    const availableCmds = ['help', 'ls', 'cd', 'cat', 'clear', 'whoami', 'date', 'ping', 'pong'];
+    const availableCmds = ['help', 'ls', 'cd', 'cat', 'clear', 'whoami', 'date', 'ping', ...Object.keys(window.Terminal.games)];
     const matches = availableCmds.filter(cmd => cmd.startsWith(typedCmd));
 
     if (matches.length === 1) {
@@ -752,13 +522,17 @@ terminalInput.addEventListener('input', (e) => {
 
 // Capture special key entries for History and Autocomplete
 terminalInput.addEventListener('keydown', async (e) => {
-  if (activeInputResolver) {
+  if (loginState === 'GAME') {
+    return; // Ignore standard hotkeys during active gameplay state
+  }
+
+  if (window.Terminal.activeInputResolver) {
     if (e.key === 'Enter') {
       const val = terminalInput.value;
       terminalInput.value = '';
       inputDisplay.textContent = '';
-      const resolve = activeInputResolver;
-      activeInputResolver = null;
+      const resolve = window.Terminal.activeInputResolver;
+      window.Terminal.activeInputResolver = null;
       resolve(val);
     }
     return; // Block other hotkeys (Arrows/Tab) during custom input prompts
@@ -798,7 +572,9 @@ terminalInput.addEventListener('keydown', async (e) => {
 
 // Focus input on click anywhere inside the terminal window
 document.addEventListener('click', (e) => {
-  focusInput();
+  if (loginState !== 'GAME') {
+    focusInput();
+  }
 });
 
 // Intercept clicks on interactive ls items
@@ -830,21 +606,6 @@ document.addEventListener('click', async (e) => {
   }
 });
 
-// Capture Pong gameplay key inputs globally on the page
-document.addEventListener('keydown', (e) => {
-  if (loginState === 'PONG') {
-    if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      if (pongGame) pongGame.playerY = Math.max(0, pongGame.playerY - 1);
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      if (pongGame) pongGame.playerY = Math.min(pongGame.boardHeight - pongGame.paddleHeight, pongGame.playerY + 1);
-    } else if (e.key === 'q' || e.key === 'Q') {
-      e.preventDefault();
-      if (pongGame) pongGame.gameOver = true;
-    }
-  }
-});
 
 // Initial boot initialization on load
 window.addEventListener('load', () => {
