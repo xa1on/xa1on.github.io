@@ -15,8 +15,17 @@ const commandHistory = [];
 let historyIndex = -1;
 
 // Expose state logic on the window.Terminal namespace
-window.Terminal.currentPath = currentPath;
-window.Terminal.currentUsername = currentUsername;
+window.Terminal.virtualFS = virtualFS;
+
+Object.defineProperty(window.Terminal, 'currentPath', {
+  get() { return currentPath; },
+  set(val) { currentPath = val; }
+});
+
+Object.defineProperty(window.Terminal, 'currentUsername', {
+  get() { return currentUsername; },
+  set(val) { currentUsername = val; }
+});
 
 Object.defineProperty(window, 'loginState', {
   get() { return window.Terminal.loginState; },
@@ -178,46 +187,24 @@ function startConnection() {
 /**
  * Command Handler - executes commands when logged in
  */
-async function executeCommand(cmdStr) {
-  const trimmed = cmdStr.trim();
-  if (trimmed === '') return;
-
-  // Print command to output history
-  const displayPath = currentPath.length === 0 ? '~' : '/' + currentPath.join('/');
-  printOutput(`<span class="color-accent"><span class="red">${currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${trimmed}`);
-
-  // Split arguments
-  const parts = trimmed.split(/\s+/);
-  const command = parts[0].toLowerCase();
-  const args = parts.slice(1);
-
-  // Check modular game/command registry first
-  if (window.Terminal.games[command]) {
-    await window.Terminal.games[command].run(args);
-    return;
-  }
-
-  switch (command) {
-    case 'help':
-      {
-        let helpText = `Available Commands:
-  <span class="color-accent">ls</span>             List contents of the current directory.
-  <span class="color-accent">cd [dir]</span>       Change the current working directory.
-  <span class="color-accent">cat [file]</span>     Display the contents of a text file.
-  <span class="color-accent">clear</span>          Clear the terminal screen.
-  <span class="color-accent">whoami</span>         Print the current session user name.
-  <span class="color-accent">date</span>           Display the current system date and time.
-  <span class="color-accent">ping [host]</span>    Simulate pinging a host.`;
-
-        for (const [name, game] of Object.entries(window.Terminal.games)) {
-          helpText += `\n  <span class="color-accent">${name.padEnd(14)}</span> ${game.helpText}`;
-        }
-
-        printOutput(helpText);
+// Modular Commands Registry
+window.Terminal.commands = {
+  help: {
+    helpText: 'List available commands.',
+    run: async (args) => {
+      let helpText = `Available Commands:`;
+      for (const [name, cmd] of Object.entries(window.Terminal.commands)) {
+        helpText += `\n  <span class="color-accent">${name.padEnd(14)}</span> ${cmd.helpText}`;
       }
-      break;
-
-    case 'ls':
+      for (const [name, game] of Object.entries(window.Terminal.games)) {
+        helpText += `\n  <span class="color-accent">${name.padEnd(14)}</span> ${game.helpText}`;
+      }
+      printOutput(helpText);
+    }
+  },
+  ls: {
+    helpText: 'List contents of the current directory.',
+    run: async (args) => {
       const currentDir = getNodeByPath(currentPath);
       if (currentDir && typeof currentDir === 'object') {
         const items = Object.keys(currentDir);
@@ -230,7 +217,6 @@ async function executeCommand(cmdStr) {
             : `<span class="color-file ls-item" data-type="file" data-path="${absolutePath}">${name}</span>`;
         });
 
-        // Add parent directory link if not in root
         if (currentPath.length > 0) {
           const parentPath = '/' + currentPath.slice(0, -1).join('/');
           formattedItems.unshift(`<span class="color-dir ls-item" data-type="dir" data-path="${parentPath}">../</span>`);
@@ -244,9 +230,11 @@ async function executeCommand(cmdStr) {
       } else {
         printOutput('ls: cannot open directory: file system error.', 'color-error');
       }
-      break;
-
-    case 'cd':
+    }
+  },
+  cd: {
+    helpText: 'Change the current working directory.',
+    run: async (args) => {
       if (args.length === 0 || args[0] === '~') {
         currentPath = [];
       } else {
@@ -263,86 +251,141 @@ async function executeCommand(cmdStr) {
           }
         }
       }
-      break;
-
-    case 'cat':
+    }
+  },
+  cat: {
+    helpText: 'Display the contents of a text file or open an HTML page.',
+    run: async (args) => {
       if (args.length === 0) {
         printOutput('cat: missing file operand. Usage: cat [filename]', 'color-error');
+        return;
+      }
+      const fileArg = args[0];
+      const resolved = resolvePath(fileArg);
+      if (resolved === null) {
+        printOutput(`cat: ${fileArg}: No such file or directory`, 'color-error');
+        return;
+      }
+      const targetNode = getNodeByPath(resolved);
+      if (targetNode === null) {
+        printOutput(`cat: ${fileArg}: No such file or directory`, 'color-error');
+      } else if (typeof targetNode === 'object') {
+        printOutput(`cat: ${fileArg}: Is a directory`, 'color-error');
       } else {
-        const fileArg = args[0];
-        const resolved = resolvePath(fileArg);
-        if (resolved === null) {
-          printOutput(`cat: ${fileArg}: No such file or directory`, 'color-error');
-        } else {
-          const targetNode = getNodeByPath(resolved);
-          if (targetNode === null) {
-            printOutput(`cat: ${fileArg}: No such file or directory`, 'color-error');
-          } else if (typeof targetNode === 'object') {
-            printOutput(`cat: ${fileArg}: Is a directory`, 'color-error');
+        const fileName = resolved[resolved.length - 1];
+        if (fileName.endsWith('.html')) {
+          const filePath = 'server_root/' + resolved.join('/');
+          printOutput(`Opening ${fileName} in a new tab...`);
+          const newTab = window.open(filePath, '_blank');
+          if (!newTab) {
+            printOutput(`Popup blocked. Please click to open: <a href="${filePath}" target="_blank" class="color-link">[Open ${fileName}]</a>`, 'color-error');
           } else {
-            // It is a file! Let's fetch it from server_root/
-            const filePath = 'server_root/' + resolved.join('/');
-            try {
-              const response = await fetch(filePath);
-              if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-              }
-              const rawText = await response.text();
-              const parsedHtml = parseMarkdown(rawText);
-              printOutput(parsedHtml);
-            } catch (err) {
-              printOutput(`cat: error reading ${fileArg}: Permission denied or file corrupt`, 'color-error');
-            }
+            printOutput(`<a href="${filePath}" target="_blank" class="color-link">[Fallback link: Click here if the page did not open]</a>`);
           }
+          return;
+        }
+
+        const filePath = 'server_root/' + resolved.join('/');
+        try {
+          const response = await fetch(filePath);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          const rawText = await response.text();
+          const parsedHtml = parseMarkdown(rawText);
+          printOutput(parsedHtml);
+        } catch (err) {
+          printOutput(`cat: error reading ${fileArg}: Permission denied or file corrupt`, 'color-error');
         }
       }
-      break;
-
-    case 'clear':
+    }
+  },
+  clear: {
+    helpText: 'Clear the terminal screen.',
+    run: async (args) => {
       terminalOutput.innerHTML = '';
-      break;
-
-    case 'whoami':
+    }
+  },
+  whoami: {
+    helpText: 'Print the current session user name.',
+    run: async (args) => {
       printOutput(currentUsername);
-      break;
-
-    case 'date':
+    }
+  },
+  date: {
+    helpText: 'Display the current system date and time.',
+    run: async (args) => {
       printOutput(new Date().toString());
-      break;
+    }
+  },
+  ping: {
+    helpText: 'Simulate pinging a host.',
+    run: async (args) => {
+      const host = args.length > 0 ? args[0] : 'chenghao.li';
+      const ip = `${Math.floor(Math.random() * 223) + 1}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 254) + 1}`;
 
-    case 'ping':
-      {
-        const host = args.length > 0 ? args[0] : 'chenghao.li';
-        // Generate a random mock IPv4 address
-        const ip = `${Math.floor(Math.random() * 223) + 1}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 254) + 1}`;
+      printOutput(`PING ${host} (${ip}) 56(84) bytes of data.`);
 
-        printOutput(`PING ${host} (${ip}) 56(84) bytes of data.`);
-
-        const times = [];
-        for (let i = 1; i <= 4; i++) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          const time = (Math.random() * 30 + 5).toFixed(3);
-          times.push(parseFloat(time));
-          printOutput(`64 bytes from ${ip}: icmp_seq=${i} ttl=64 time=${time} ms`);
+      const times = [];
+      for (let i = 1; i <= 4; i++) {
+        if (window.Terminal.abortSignal) {
+          printOutput('ping: interrupted by user', 'color-dim');
+          return;
         }
-
-        await new Promise(resolve => setTimeout(resolve, 200));
-
-        const totalTime = times.reduce((a, b) => a + b, 0);
-        const min = Math.min(...times).toFixed(3);
-        const avg = (totalTime / times.length).toFixed(3);
-        const max = Math.max(...times).toFixed(3);
-        const mdev = Math.sqrt(times.reduce((acc, val) => acc + Math.pow(val - avg, 2), 0) / times.length).toFixed(3);
-
-        printOutput(`\n--- ${host} ping statistics ---`);
-        printOutput(`4 packets transmitted, 4 received, 0% packet loss, time ${Math.floor(totalTime + 1200)}ms`);
-        printOutput(`rtt min/avg/max/mdev = ${min}/${avg}/${max}/${mdev} ms`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (window.Terminal.abortSignal) {
+          printOutput('ping: interrupted by user', 'color-dim');
+          return;
+        }
+        const time = (Math.random() * 30 + 5).toFixed(3);
+        times.push(parseFloat(time));
+        printOutput(`64 bytes from ${ip}: icmp_seq=${i} ttl=64 time=${time} ms`);
       }
-      break;
 
-    default:
-      printOutput(`command not found: ${command}. Type 'help' to see list of commands.`, 'color-error');
+      await new Promise(resolve => setTimeout(resolve, 200));
+      if (window.Terminal.abortSignal) return;
+
+      const totalTime = times.reduce((a, b) => a + b, 0);
+      const min = Math.min(...times).toFixed(3);
+      const avg = (totalTime / times.length).toFixed(3);
+      const max = Math.max(...times).toFixed(3);
+      const mdev = Math.sqrt(times.reduce((acc, val) => acc + Math.pow(val - avg, 2), 0) / times.length).toFixed(3);
+
+      printOutput(`\n--- ${host} ping statistics ---`);
+      printOutput(`4 packets transmitted, 4 received, 0% packet loss, time ${Math.floor(totalTime + 1200)}ms`);
+      printOutput(`rtt min/avg/max/mdev = ${min}/${avg}/${max}/${mdev} ms`);
+    }
   }
+};
+
+/**
+ * Command Handler - executes commands when logged in
+ */
+async function executeCommand(cmdStr) {
+  const trimmed = cmdStr.trim();
+  if (trimmed === '') return;
+
+  const displayPath = currentPath.length === 0 ? '~' : '/' + currentPath.join('/');
+  printOutput(`<span class="color-accent"><span class="red">${currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${trimmed}`);
+
+  const parts = trimmed.split(/\s+/);
+  const command = parts[0].toLowerCase();
+  const args = parts.slice(1);
+
+  // Reset abort signal before running command
+  window.Terminal.abortSignal = false;
+
+  if (window.Terminal.commands[command]) {
+    await window.Terminal.commands[command].run(args);
+    return;
+  }
+
+  if (window.Terminal.games[command]) {
+    await window.Terminal.games[command].run(args);
+    return;
+  }
+
+  printOutput(`command not found: ${command}. Type 'help' to see list of commands.`, 'color-error');
 }
 
 /**
@@ -399,6 +442,18 @@ function getRelativePath(fromPath, toPath) {
   return segments.join('/');
 }
 
+function getLongestCommonPrefix(words) {
+  if (words.length === 0) return '';
+  let prefix = words[0];
+  for (let i = 1; i < words.length; i++) {
+    while (words[i].toLowerCase().indexOf(prefix.toLowerCase()) !== 0) {
+      prefix = prefix.substring(0, prefix.length - 1);
+      if (prefix === '') return '';
+    }
+  }
+  return prefix;
+}
+
 /**
  * Tab Autocomplete logic
  * Autocompletes matching commands and files/directories in currentPath, case-insensitively
@@ -408,35 +463,33 @@ function handleTabAutocomplete() {
   const trimmed = currentVal.trimStart();
   if (trimmed === '') return;
 
-  // Split by space. We want to autocomplete the last token.
-  // Note: if there's no space in the trimmed string, we are autocompleting the command itself.
   const parts = currentVal.split(/\s+/);
   const isCommandOnly = parts.length === 1;
 
   if (isCommandOnly) {
     // Autocomplete commands
     const typedCmd = parts[0].toLowerCase();
-    const availableCmds = ['help', 'ls', 'cd', 'cat', 'clear', 'whoami', 'date', 'ping', ...Object.keys(window.Terminal.games)];
+    const availableCmds = [...Object.keys(window.Terminal.commands), ...Object.keys(window.Terminal.games)];
     const matches = availableCmds.filter(cmd => cmd.startsWith(typedCmd));
 
     if (matches.length === 1) {
-      // Single match: complete it with a space at the end
       terminalInput.value = matches[0] + ' ';
       inputDisplay.textContent = terminalInput.value;
     } else if (matches.length > 1) {
-      // Multiple matches: list them horizontally, reprint prompt line
-      printOutput(matches.join('    '), 'color-accent');
-      // Reprint prompt log
-      const displayPath = currentPath.length === 0 ? '~' : '/' + currentPath.join('/');
-      printOutput(`<span class="color-accent"><span class="red">${currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${currentVal}`);
+      const lcp = getLongestCommonPrefix(matches);
+      if (lcp.length > typedCmd.length) {
+        terminalInput.value = lcp;
+        inputDisplay.textContent = terminalInput.value;
+      } else {
+        printOutput(matches.join('    '), 'color-accent');
+        const displayPath = currentPath.length === 0 ? '~' : '/' + currentPath.join('/');
+        printOutput(`<span class="color-accent"><span class="red">${currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${currentVal}`);
+      }
     }
   } else {
-    // Autocomplete file/path arguments (for commands like cd and cat)
-    const activeCommand = parts[0].toLowerCase();
-    // The argument is everything after the command
-    const argVal = parts.slice(1).join(' ');
+    // Autocomplete file/path arguments
+    const argVal = parts[parts.length - 1];
 
-    // We split the path string by '/' to handle nested folders
     const slashIdx = argVal.lastIndexOf('/');
     let targetPath = [...currentPath];
     let prefix = argVal;
@@ -447,7 +500,7 @@ function handleTabAutocomplete() {
 
       const resolvedPrefixPath = resolvePath(pathPrefix);
       if (resolvedPrefixPath === null) {
-        return; // Invalid path prefix, can't autocomplete
+        return;
       }
       targetPath = resolvedPrefixPath;
     }
@@ -456,33 +509,38 @@ function handleTabAutocomplete() {
     if (!targetDir || typeof targetDir !== 'object') return;
 
     const dirKeys = Object.keys(targetDir);
-    // Support parent directory traversal symbol if not in root
     if (targetPath.length > 0) {
       dirKeys.push('..');
     }
 
-    // Filter matches case-insensitively
     const prefixLower = prefix.toLowerCase();
     const matches = dirKeys.filter(key => key.toLowerCase().startsWith(prefixLower));
 
     if (matches.length === 1) {
-      // Single match: complete it
       const matchedName = matches[0];
       const isDirNode = matchedName === '..' || typeof targetDir[matchedName] === 'object';
       const completedArg = (slashIdx !== -1 ? argVal.slice(0, slashIdx + 1) : '') + matchedName + (isDirNode ? '/' : ' ');
 
-      terminalInput.value = parts[0] + ' ' + completedArg;
+      parts[parts.length - 1] = completedArg;
+      terminalInput.value = parts.join(' ');
       inputDisplay.textContent = terminalInput.value;
     } else if (matches.length > 1) {
-      // Multiple matches: list them horizontally, print prompt
-      const formattedMatches = matches.map(matchedName => {
-        const isDirNode = matchedName === '..' || typeof targetDir[matchedName] === 'object';
-        return isDirNode ? `<span class="color-dir">${matchedName}/</span>` : `<span class="color-file">${matchedName}</span>`;
-      });
-      printOutput(formattedMatches.join('    '));
+      const lcp = getLongestCommonPrefix(matches);
+      if (lcp.length > prefix.length) {
+        const completedPrefix = (slashIdx !== -1 ? argVal.slice(0, slashIdx + 1) : '') + lcp;
+        parts[parts.length - 1] = completedPrefix;
+        terminalInput.value = parts.join(' ');
+        inputDisplay.textContent = terminalInput.value;
+      } else {
+        const formattedMatches = matches.map(matchedName => {
+          const isDirNode = matchedName === '..' || typeof targetDir[matchedName] === 'object';
+          return isDirNode ? `<span class="color-dir">${matchedName}/</span>` : `<span class="color-file">${matchedName}</span>`;
+        });
+        printOutput(formattedMatches.join('    '));
 
-      const displayPath = currentPath.length === 0 ? '~' : '/' + currentPath.join('/');
-      printOutput(`<span class="color-accent"><span class="red">${currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${currentVal}`);
+        const displayPath = currentPath.length === 0 ? '~' : '/' + currentPath.join('/');
+        printOutput(`<span class="color-accent"><span class="red">${currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${currentVal}`);
+      }
     }
   }
 }
@@ -495,18 +553,26 @@ async function handleInputSubmit(val) {
 
   const trimmed = val.trim();
   if (trimmed !== '') {
-    // Add to history if empty or different from the last entry
     if (commandHistory.length === 0 || commandHistory[commandHistory.length - 1] !== trimmed) {
       commandHistory.push(trimmed);
     }
     historyIndex = commandHistory.length;
   }
 
+  terminalInput.disabled = true;
   inputLine.style.visibility = 'hidden';
-  await executeCommand(val);
-  inputLine.style.visibility = 'visible';
-  updatePrompt();
-  focusInput();
+
+  try {
+    await executeCommand(val);
+  } catch (err) {
+    printOutput(`Error executing command: ${err.message}`, 'color-error');
+    console.error(err);
+  } finally {
+    terminalInput.disabled = false;
+    inputLine.style.visibility = 'visible';
+    updatePrompt();
+    focusInput();
+  }
 }
 
 // Event Listeners
@@ -611,19 +677,44 @@ document.addEventListener('click', async (e) => {
 });
 
 
+// Capture Ctrl+C interrupts (only if no text is selected)
+document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && e.key.toLowerCase() === 'c') {
+    if (window.getSelection().toString() === '') {
+      e.preventDefault();
+      window.Terminal.abortSignal = true;
+
+      if (loginState === 'LOGGED_IN' && !terminalInput.disabled) {
+        const currentVal = terminalInput.value;
+        printOutput(`<span class="color-accent"><span class="red">${currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${currentPath.length === 0 ? '~' : '/' + currentPath.join('/')}</span># ${currentVal}^C`);
+        terminalInput.value = '';
+        inputDisplay.textContent = '';
+        updatePrompt();
+        focusInput();
+      }
+    }
+  }
+});
+
 // Initial boot initialization on load
 window.addEventListener('load', () => {
-  // Sync the glow backdrop with terminal output dynamically
   if (glowBackdrop && terminalOutput) {
+    let throttleTimeout = null;
     const observer = new MutationObserver(() => {
-      glowBackdrop.innerHTML = terminalOutput.innerHTML;
+      if (!throttleTimeout) {
+        throttleTimeout = setTimeout(() => {
+          if (glowBackdrop && terminalOutput) {
+            glowBackdrop.innerHTML = terminalOutput.innerHTML;
+          }
+          throttleTimeout = null;
+        }, 80);
+      }
     });
     observer.observe(terminalOutput, {
       childList: true,
       subtree: true,
       characterData: true
     });
-    // Set initial state
     glowBackdrop.innerHTML = terminalOutput.innerHTML;
   }
   startConnection();

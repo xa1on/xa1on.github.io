@@ -1,23 +1,7 @@
 @font-face {
   font-family: 'Fira Code';
   font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url('assets/fonts/FiraCode-latin.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Fira Code';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url('assets/fonts/FiraCode-latin.woff2') format('woff2');
-}
-
-@font-face {
-  font-family: 'Fira Code';
-  font-style: normal;
-  font-weight: 700;
+  font-weight: 100 900;
   font-display: swap;
   src: url('assets/fonts/FiraCode-latin.woff2') format('woff2');
 }
@@ -163,7 +147,7 @@ body {
   font-size: 1rem;
   line-height: 1.2;
   scrollbar-width: thin;
-  scrollbar-color: rgba(240, 31, 66, 0.3) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
   z-index: 5;
   transform: translate3d(0, 0, 0);
   will-change: transform;
@@ -179,12 +163,12 @@ body {
 }
 
 .terminal-body::-webkit-scrollbar-thumb {
-  background: rgba(31, 240, 66, 0.3);
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 4px;
 }
 
 .terminal-body::-webkit-scrollbar-thumb:hover {
-  background: var(--text-color);
+  background: rgba(255, 255, 255, 0.4);
 }
 
 .terminal-glow-backdrop {

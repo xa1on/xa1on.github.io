@@ -5,6 +5,8 @@ window.Terminal.games.tetris = {
     // Enter gameplay state
     window.Terminal.loginState = 'GAME';
 
+    return new Promise((resolve) => {
+
     const COLS = 10;
     const ROWS = 20;
 
@@ -360,7 +362,7 @@ window.Terminal.games.tetris = {
     let animationId = null;
 
     function gameLoop() {
-      if (gameOver) {
+      if (gameOver || window.Terminal.abortSignal) {
         cancelAnimationFrame(animationId);
         cleanup();
         return;
@@ -468,9 +470,15 @@ window.Terminal.games.tetris = {
       document.removeEventListener('keydown', keyHandler);
       window.Terminal.loginState = 'LOGGED_IN';
 
-      window.Terminal.print('--- GAME OVER ---', 'color-error');
-      window.Terminal.print(`Final Score: <span class="color-accent">${score}</span>`);
-      window.Terminal.print(`Lines Cleared: <span class="color-accent">${linesCleared}</span>`);
+      if (window.Terminal.abortSignal) {
+        window.Terminal.print('Tetris interrupted.', 'color-dim');
+      } else {
+        window.Terminal.print('--- GAME OVER ---', 'color-error');
+        window.Terminal.print(`Final Score: <span class="color-accent">${score}</span>`);
+        window.Terminal.print(`Lines Cleared: <span class="color-accent">${linesCleared}</span>`);
+      }
+      resolve();
     }
-  }
+  });
+}
 };

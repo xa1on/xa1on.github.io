@@ -127,7 +127,7 @@ window.Terminal.games.pong = {
 
     await new Promise((resolve) => {
       const gameInterval = setInterval(() => {
-        if (pongGame.gameOver) {
+        if (pongGame.gameOver || window.Terminal.abortSignal) {
           clearInterval(gameInterval);
           resolve();
           return;
@@ -214,6 +214,8 @@ window.Terminal.games.pong = {
       window.Terminal.print('Congratulations! You won the match!', 'color-green');
     } else if (pongGame.cpuScore >= 5) {
       window.Terminal.print('Game Over! The CPU won the match.', 'color-error');
+    } else if (window.Terminal.abortSignal) {
+      window.Terminal.print('Pong game interrupted.', 'color-dim');
     } else {
       window.Terminal.print('Pong game terminated.', 'color-dim');
     }
