@@ -15,6 +15,8 @@ let currentUsername = 'root';
 const commandHistory = [];
 let historyIndex = -1;
 const MAX_LINES = 150; // Keep the last 150 printed output lines to prevent DOM bloat and render lag
+let activeInputResolver = null;
+let pongGame = null;
 
 // DOM Cache
 const terminalBody = document.getElementById('terminal-body');
@@ -53,6 +55,31 @@ const asciiArt = `
  */
 function focusInput() {
   terminalInput.focus();
+}
+
+/**
+ * Asynchronously prompts the user for custom input inline in the shell.
+ * Can be used by any command or game.
+ */
+function readInput(promptText) {
+  return new Promise((resolve) => {
+    const originalPrefixHTML = promptPrefix.innerHTML;
+    
+    // Temporarily show input line so user can type
+    inputLine.style.visibility = 'visible';
+    
+    promptPrefix.textContent = promptText;
+    terminalInput.value = '';
+    inputDisplay.textContent = '';
+    focusInput();
+    
+    activeInputResolver = (val) => {
+      // Hide input line again
+      inputLine.style.visibility = 'hidden';
+      promptPrefix.innerHTML = originalPrefixHTML;
+      resolve(val);
+    };
+  });
 }
 
 /**
@@ -236,6 +263,7 @@ async function executeCommand(cmdStr) {
   <span class="color-accent">whoami</span>         Print the current session user name.
   <span class="color-accent">date</span>           Display the current system date and time.
   <span class="color-accent">ping [host]</span>    Simulate pinging a host.
+  <span class="color-accent">pong [level]</span>   Play a game of Pong (easy|medium|hard).
 `);
       break;
 
@@ -362,6 +390,183 @@ async function executeCommand(cmdStr) {
       }
       break;
 
+    case 'pong':
+      {
+        let diffText = args.length > 0 ? args[0].toLowerCase() : '';
+        while (diffText !== 'easy' && diffText !== 'medium' && diffText !== 'hard' && diffText !== '1' && diffText !== '2' && diffText !== '3') {
+          printOutput('Select difficulty:\n  [1] Easy\n  [2] Medium\n  [3] Hard');
+          const response = await readInput('Choose difficulty (1-3): ');
+          diffText = response.trim().toLowerCase();
+          if (diffText === '') {
+            printOutput('Pong cancelled.', 'color-dim');
+            return;
+          }
+        }
+
+        let difficulty = 'easy';
+        if (diffText === '2' || diffText === 'medium') difficulty = 'medium';
+        if (diffText === '3' || diffText === 'hard') difficulty = 'hard';
+
+        loginState = 'PONG';
+        
+        pongGame = {
+          playerY: 4,
+          cpuY: 4,
+          ballX: 22,
+          ballY: 5,
+          ballDx: Math.random() > 0.5 ? 1 : -1,
+          ballDy: Math.random() > 0.5 ? 0.5 : -0.5,
+          playerScore: 0,
+          cpuScore: 0,
+          boardWidth: 44,
+          boardHeight: 12,
+          paddleHeight: 3,
+          difficulty: difficulty,
+          gameOver: false
+        };
+
+        const gameContainer = document.createElement('pre');
+        gameContainer.style.fontFamily = 'monospace';
+        gameContainer.style.lineHeight = '1.15';
+        gameContainer.style.color = 'var(--text-color)';
+        terminalOutput.appendChild(gameContainer);
+
+        function drawPong() {
+          let board = '';
+          const width = pongGame.boardWidth;
+          const height = pongGame.boardHeight;
+          
+          board += '─'.repeat(width + 2) + '\n';
+          
+          for (let y = 0; y < height; y++) {
+            let line = '│';
+            for (let x = 0; x < width; x++) {
+              const isLeftPaddle = (x === 1) && (y >= pongGame.playerY && y < pongGame.playerY + pongGame.paddleHeight);
+              const isRightPaddle = (x === width - 2) && (y >= pongGame.cpuY && y < pongGame.cpuY + pongGame.paddleHeight);
+              const isBall = (x === Math.round(pongGame.ballX)) && (y === Math.round(pongGame.ballY));
+              
+              if (isLeftPaddle || isRightPaddle) {
+                line += '█';
+              } else if (isBall) {
+                line += '●';
+              } else {
+                line += ' ';
+              }
+            }
+            line += '│\n';
+            board += line;
+          }
+          
+          board += '─'.repeat(width + 2) + '\n';
+          board += ` Score: Player ${pongGame.playerScore} ║ CPU ${pongGame.cpuScore}   (Difficulty: ${pongGame.difficulty.toUpperCase()})\n`;
+          board += ` Controls: [ArrowUp]/[ArrowDown] to move. Press [Q] to quit.\n`;
+          
+          gameContainer.textContent = board;
+          terminalBody.scrollTop = terminalBody.scrollHeight;
+        }
+
+        drawPong();
+
+        function resetBall(direction) {
+          pongGame.ballX = Math.floor(pongGame.boardWidth / 2);
+          pongGame.ballY = Math.floor(pongGame.boardHeight / 2);
+          pongGame.ballDx = direction;
+          pongGame.ballDy = Math.random() > 0.5 ? 0.5 : -0.5;
+        }
+
+        await new Promise((resolve) => {
+          const gameInterval = setInterval(() => {
+            if (pongGame.gameOver) {
+              clearInterval(gameInterval);
+              resolve();
+              return;
+            }
+
+            // Move Ball
+            pongGame.ballX += pongGame.ballDx;
+            pongGame.ballY += pongGame.ballDy;
+
+            // Bounce top/bottom
+            if (pongGame.ballY <= 0) {
+              pongGame.ballY = 0;
+              pongGame.ballDy = -pongGame.ballDy;
+            } else if (pongGame.ballY >= pongGame.boardHeight - 1) {
+              pongGame.ballY = pongGame.boardHeight - 1;
+              pongGame.ballDy = -pongGame.ballDy;
+            }
+
+            // Left paddle collision
+            if (pongGame.ballX <= 2 && pongGame.ballDx < 0) {
+              if (pongGame.ballY >= pongGame.playerY && pongGame.ballY < pongGame.playerY + pongGame.paddleHeight) {
+                pongGame.ballX = 2;
+                pongGame.ballDx = 1;
+                const hitPos = pongGame.ballY - pongGame.playerY;
+                if (hitPos === 0) pongGame.ballDy = -0.75;
+                else if (hitPos === 2) pongGame.ballDy = 0.75;
+                else pongGame.ballDy = (Math.random() > 0.5 ? 0.5 : -0.5);
+              }
+            }
+
+            // Right paddle collision
+            if (pongGame.ballX >= pongGame.boardWidth - 3 && pongGame.ballDx > 0) {
+              if (pongGame.ballY >= pongGame.cpuY && pongGame.ballY < pongGame.cpuY + pongGame.paddleHeight) {
+                pongGame.ballX = pongGame.boardWidth - 3;
+                pongGame.ballDx = -1;
+                const hitPos = pongGame.ballY - pongGame.cpuY;
+                if (hitPos === 0) pongGame.ballDy = -0.75;
+                else if (hitPos === 2) pongGame.ballDy = 0.75;
+                else pongGame.ballDy = (Math.random() > 0.5 ? 0.5 : -0.5);
+              }
+            }
+
+            // CPU AI movement
+            const ballTarget = pongGame.ballY;
+            const cpuCenter = pongGame.cpuY + 1;
+            let moveProbability = 0.45;
+            if (pongGame.difficulty === 'medium') moveProbability = 0.70;
+            if (pongGame.difficulty === 'hard') moveProbability = 0.92;
+
+            if (Math.random() < moveProbability) {
+              if (cpuCenter < ballTarget) {
+                pongGame.cpuY = Math.min(pongGame.boardHeight - pongGame.paddleHeight, pongGame.cpuY + 1);
+              } else if (cpuCenter > ballTarget) {
+                pongGame.cpuY = Math.max(0, pongGame.cpuY - 1);
+              }
+            }
+
+            // Point scoring
+            if (pongGame.ballX < 0) {
+              pongGame.cpuScore++;
+              if (pongGame.cpuScore >= 5) {
+                pongGame.gameOver = true;
+              } else {
+                resetBall(1);
+              }
+            } else if (pongGame.ballX >= pongGame.boardWidth) {
+              pongGame.playerScore++;
+              if (pongGame.playerScore >= 5) {
+                pongGame.gameOver = true;
+              } else {
+                resetBall(-1);
+              }
+            }
+
+            drawPong();
+          }, 80);
+        });
+
+        loginState = 'LOGGED_IN';
+        if (pongGame.playerScore >= 5) {
+          printOutput('Congratulations! You won the match! 🎉', 'color-green');
+        } else if (pongGame.cpuScore >= 5) {
+          printOutput('Game Over! The CPU won the match. 🤖', 'color-error');
+        } else {
+          printOutput('Pong game terminated.', 'color-dim');
+        }
+        pongGame = null;
+      }
+      break;
+
 
 
     default:
@@ -440,7 +645,7 @@ function handleTabAutocomplete() {
   if (isCommandOnly) {
     // Autocomplete commands
     const typedCmd = parts[0].toLowerCase();
-    const availableCmds = ['help', 'ls', 'cd', 'cat', 'clear', 'whoami', 'date', 'ping'];
+    const availableCmds = ['help', 'ls', 'cd', 'cat', 'clear', 'whoami', 'date', 'ping', 'pong'];
     const matches = availableCmds.filter(cmd => cmd.startsWith(typedCmd));
 
     if (matches.length === 1) {
@@ -547,6 +752,18 @@ terminalInput.addEventListener('input', (e) => {
 
 // Capture special key entries for History and Autocomplete
 terminalInput.addEventListener('keydown', async (e) => {
+  if (activeInputResolver) {
+    if (e.key === 'Enter') {
+      const val = terminalInput.value;
+      terminalInput.value = '';
+      inputDisplay.textContent = '';
+      const resolve = activeInputResolver;
+      activeInputResolver = null;
+      resolve(val);
+    }
+    return; // Block other hotkeys (Arrows/Tab) during custom input prompts
+  }
+
   if (e.key === 'Enter') {
     const val = terminalInput.value;
     terminalInput.value = '';
@@ -609,6 +826,22 @@ document.addEventListener('click', async (e) => {
         // Execute cat [relative_path]
         await handleInputSubmit(`cat ${relativePath}`);
       }
+    }
+  }
+});
+
+// Capture Pong gameplay key inputs globally on the page
+document.addEventListener('keydown', (e) => {
+  if (loginState === 'PONG') {
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (pongGame) pongGame.playerY = Math.max(0, pongGame.playerY - 1);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (pongGame) pongGame.playerY = Math.min(pongGame.boardHeight - pongGame.paddleHeight, pongGame.playerY + 1);
+    } else if (e.key === 'q' || e.key === 'Q') {
+      e.preventDefault();
+      if (pongGame) pongGame.gameOver = true;
     }
   }
 });
