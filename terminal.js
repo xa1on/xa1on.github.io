@@ -571,10 +571,13 @@ terminalInput.addEventListener('keydown', async (e) => {
   }
 });
 
-// Focus input on click anywhere inside the terminal window
+// Focus input on click anywhere inside the terminal window, unless the user has selected text
 document.addEventListener('click', (e) => {
   if (loginState !== 'GAME') {
-    focusInput();
+    const selectedText = window.getSelection().toString();
+    if (!selectedText) {
+      focusInput();
+    }
   }
 });
 
