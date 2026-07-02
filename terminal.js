@@ -14,6 +14,7 @@ let loginState = 'BOOTING'; // BOOTING | LOGGED_IN
 let currentUsername = 'root';
 const commandHistory = [];
 let historyIndex = -1;
+const MAX_LINES = 150; // Keep the last 150 printed output lines to prevent DOM bloat and render lag
 
 // DOM Cache
 const terminalBody = document.getElementById('terminal-body');
@@ -103,6 +104,12 @@ function printOutput(htmlContent, className = 'color-text') {
   line.className = className;
   line.innerHTML = htmlContent;
   terminalOutput.appendChild(line);
+
+  // Keep DOM count under control to prevent long-term lag
+  while (terminalOutput.children.length > MAX_LINES) {
+    terminalOutput.removeChild(terminalOutput.firstChild);
+  }
+
   // Auto-scroll to bottom of terminal
   terminalBody.scrollTop = terminalBody.scrollHeight;
 }
