@@ -3,6 +3,7 @@ window.Terminal = {
   // DOM Cache (initialized below when document is parsed)
   body: null,
   output: null,
+  glowBackdrop: null,
   inputLine: null,
   promptPrefix: null,
   inputDisplay: null,
@@ -95,6 +96,7 @@ window.Terminal = {
 // Initialize DOM cache immediately (loaded at bottom of body)
 window.Terminal.body = document.getElementById('terminal-body');
 window.Terminal.output = document.getElementById('terminal-output');
+window.Terminal.glowBackdrop = document.getElementById('terminal-glow-backdrop');
 window.Terminal.inputLine = document.getElementById('input-line');
 window.Terminal.promptPrefix = document.getElementById('prompt-prefix');
 window.Terminal.inputDisplay = document.getElementById('input-display');

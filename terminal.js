@@ -26,6 +26,7 @@ Object.defineProperty(window, 'loginState', {
 // DOM Cache aliases linked to modular Terminal
 const terminalBody = window.Terminal.body;
 const terminalOutput = window.Terminal.output;
+const glowBackdrop = window.Terminal.glowBackdrop;
 const inputLine = window.Terminal.inputLine;
 const promptPrefix = window.Terminal.promptPrefix;
 const inputDisplay = window.Terminal.inputDisplay;
@@ -609,5 +610,18 @@ document.addEventListener('click', async (e) => {
 
 // Initial boot initialization on load
 window.addEventListener('load', () => {
+  // Sync the glow backdrop with terminal output dynamically
+  if (glowBackdrop && terminalOutput) {
+    const observer = new MutationObserver(() => {
+      glowBackdrop.innerHTML = terminalOutput.innerHTML;
+    });
+    observer.observe(terminalOutput, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+    // Set initial state
+    glowBackdrop.innerHTML = terminalOutput.innerHTML;
+  }
   startConnection();
 });

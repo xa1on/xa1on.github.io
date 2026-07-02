@@ -187,17 +187,44 @@ body {
   background: var(--text-color);
 }
 
+.terminal-glow-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  pointer-events: none;
+  filter: blur(80px);
+  opacity: 0.70;
+  z-index: 1;
+  user-select: none;
+}
+
+/* Ensure backdrop clones do not calculate expensive nested text-shadows */
+.terminal-glow-backdrop * {
+  text-shadow: none !important;
+}
+
 .terminal-output {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   gap: 0;
   white-space: pre-wrap;
   word-break: break-word;
   contain: layout style;
-  text-shadow: 0 0 100px var(--glow-color), 0 0 8px rgba(255, 255, 255, 0.4);
   transform: translate3d(0, 0, 0);
   will-change: transform;
 }
+
+.terminal-output *,
+.terminal-input-line *,
 
 /* Text coloring classes */
 .color-text {
@@ -207,7 +234,6 @@ body {
 .color-dir {
   color: var(--dir-color);
   font-weight: 700;
-  text-shadow: 0 0 5px rgba(0, 255, 255, 0.4);
 }
 
 .color-file {
@@ -222,12 +248,11 @@ body {
 }
 
 .color-link:hover {
-  text-shadow: 0 0 8px var(--link-color);
+  text-shadow: 0 0 12px var(--link-color);
 }
 
 .color-error {
   color: var(--error-color);
-  text-shadow: 0 0 6px rgba(255, 60, 60, 0.5);
 }
 
 .color-accent {
@@ -245,49 +270,42 @@ body {
 .blue,
 .blue-color {
   color: #58a6ff;
-  text-shadow: 0 0 4px rgba(88, 166, 255, 0.4);
 }
 
+.green-color,
 .color-green,
-.green,
-.green-color {
+.green {
   color: #7ee787;
-  text-shadow: 0 0 4px rgba(126, 231, 135, 0.4);
 }
 
 .color-red,
 .red,
 .red-color {
   color: #ff1100;
-  text-shadow: 0 0 4px rgba(255, 123, 114, 0.4);
 }
 
 .color-yellow,
 .yellow,
 .yellow-color {
   color: #d29922;
-  text-shadow: 0 0 4px rgba(210, 153, 34, 0.4);
 }
 
 .color-cyan,
 .cyan,
 .cyan-color {
   color: #39c5cf;
-  text-shadow: 0 0 4px rgba(57, 197, 207, 0.4);
 }
 
 .color-magenta,
 .magenta,
 .magenta-color {
   color: #d859c7;
-  text-shadow: 0 0 4px rgba(216, 89, 199, 0.4);
 }
 
 .color-white,
 .white,
 .white-color {
   color: #ffffff;
-  text-shadow: 0 0 4px rgba(255, 255, 255, 0.2);
 }
 
 /* Interactive ls Output Items */
@@ -308,7 +326,6 @@ body {
   align-items: center;
   gap: 10px;
   contain: layout style;
-  text-shadow: 0 0 8px var(--glow-color);
   transform: translate3d(0, 0, 0);
   will-change: transform;
 }
