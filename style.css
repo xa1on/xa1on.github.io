@@ -102,35 +102,6 @@ body {
   opacity: 0.4;
 }
 
-/* Screen Flicker Animation */
-.screen-flicker {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(18, 16, 16, 0.1);
-  opacity: 0;
-  z-index: 998;
-  pointer-events: none;
-  animation: flicker 0.15s infinite;
-  transform: translate3d(0, 0, 0);
-  will-change: opacity;
-}
-
-@keyframes flicker {
-  0% {
-    opacity: 0.18;
-  }
-
-  50% {
-    opacity: 0.22;
-  }
-
-  100% {
-    opacity: 0.18;
-  }
-}
 
 /* ==========================================
    Fullscreen Terminal Viewport
