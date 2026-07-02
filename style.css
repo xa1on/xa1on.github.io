@@ -223,8 +223,13 @@ body {
   will-change: transform;
 }
 
-.terminal-output *,
-.terminal-input-line *,
+.terminal-output div,
+.terminal-output span,
+.terminal-output a,
+.terminal-input-line span {
+  text-shadow: 0 0 3px currentColor;
+  text-shadow: 0 0 5px rgb(from currentColor r g b / 0.4);
+}
 
 /* Text coloring classes */
 .color-text {
