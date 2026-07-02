@@ -160,7 +160,6 @@ body {
   gap: 0;
   font-size: 1rem;
   line-height: 1.2;
-  text-shadow: 0 0 100px var(--glow-color);
   scrollbar-width: thin;
   scrollbar-color: rgba(240, 31, 66, 0.3) transparent;
   z-index: 5;
@@ -193,6 +192,9 @@ body {
   white-space: pre-wrap;
   word-break: break-word;
   contain: layout style;
+  text-shadow: 0 0 100px var(--glow-color);
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
 }
 
 /* Text coloring classes */
@@ -304,6 +306,9 @@ body {
   align-items: center;
   gap: 10px;
   contain: layout style;
+  text-shadow: 0 0 100px var(--glow-color);
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
 }
 
 .prompt-prefix {
