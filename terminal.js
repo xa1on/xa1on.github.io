@@ -23,6 +23,7 @@ const inputLine = document.getElementById('input-line');
 const promptPrefix = document.getElementById('prompt-prefix');
 const inputDisplay = document.getElementById('input-display');
 const terminalInput = document.getElementById('terminal-input');
+const cursor = document.getElementById('cursor');
 
 // ASCII Art Banner
 const asciiArt = `
@@ -503,9 +504,14 @@ async function handleInputSubmit(val) {
 
 // Event Listeners
 
-// Capture key entries in the hidden input and mirror to screen
 terminalInput.addEventListener('input', (e) => {
   inputDisplay.textContent = e.target.value;
+  // Reset blink animation so cursor stays solid/visible while typing
+  if (cursor) {
+    cursor.style.animation = 'none';
+    void cursor.offsetHeight; // force reflow to restart animation
+    cursor.style.animation = '';
+  }
 });
 
 // Capture special key entries for History and Autocomplete

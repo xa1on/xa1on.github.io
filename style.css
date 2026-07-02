@@ -5,6 +5,7 @@
   font-display: swap;
   src: url('assets/fonts/FiraCode-latin.woff2') format('woff2');
 }
+
 @font-face {
   font-family: 'Fira Code';
   font-style: normal;
@@ -12,6 +13,7 @@
   font-display: swap;
   src: url('assets/fonts/FiraCode-latin.woff2') format('woff2');
 }
+
 @font-face {
   font-family: 'Fira Code';
   font-style: normal;
@@ -192,7 +194,7 @@ body {
   white-space: pre-wrap;
   word-break: break-word;
   contain: layout style;
-  text-shadow: 0 0 100px var(--glow-color);
+  text-shadow: 0 0 100px var(--glow-color), 0 0 8px rgba(255, 255, 255, 0.4);
   transform: translate3d(0, 0, 0);
   will-change: transform;
 }
@@ -306,7 +308,7 @@ body {
   align-items: center;
   gap: 10px;
   contain: layout style;
-  text-shadow: 0 0 100px var(--glow-color);
+  text-shadow: 0 0 8px var(--glow-color);
   transform: translate3d(0, 0, 0);
   will-change: transform;
 }
@@ -344,11 +346,11 @@ body {
 
   from,
   to {
-    opacity: 0;
+    opacity: 1;
   }
 
   50% {
-    opacity: 1;
+    opacity: 0;
   }
 }
 
