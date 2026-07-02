@@ -7,6 +7,10 @@ export const pong = {
     while (diffText !== 'easy' && diffText !== 'medium' && diffText !== 'hard' && diffText !== '1' && diffText !== '2' && diffText !== '3') {
       window.Terminal.print('Select difficulty:\n  [1] Easy\n  [2] Medium\n  [3] Hard');
       const response = await window.Terminal.readInput('Choose difficulty (1-3): ');
+      if (response === null) {
+        window.Terminal.print('Pong cancelled.', 'color-dim');
+        return;
+      }
       diffText = response.trim().toLowerCase();
       if (diffText === '') {
         window.Terminal.print('Pong cancelled.', 'color-dim');

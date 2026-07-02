@@ -167,5 +167,17 @@ export const commands = {
       shell.print(`4 packets transmitted, 4 received, 0% packet loss, time ${Math.floor(totalTime + 1200)}ms`);
       shell.print(`rtt min/avg/max/mdev = ${min}/${avg}/${max}/${mdev} ms`);
     }
+  },
+  llm: {
+    helpText: 'Interact with a local in-browser LLM via WebGPU.',
+    run: async (args, shell) => {
+      try {
+        const { llm } = await import('./llm.js');
+        await llm.run(args, shell);
+      } catch (err) {
+        shell.print(`Error starting LLM module: ${err.message}`, 'color-error');
+        console.error(err);
+      }
+    }
   }
 };

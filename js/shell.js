@@ -17,6 +17,7 @@ export class Shell {
     this.commandHistory = [];
     this.historyIndex = -1;
     this.activeInputResolver = null;
+    this.activeInputAbortResolver = null;
     this.abortSignal = false;
 
     this.fileSystem = options.fileSystem || null;
@@ -72,6 +73,7 @@ export class Shell {
           this.inputDisplay.textContent = '';
           const resolve = this.activeInputResolver;
           this.activeInputResolver = null;
+          this.activeInputAbortResolver = null;
           resolve(val);
         }
         return;
@@ -116,6 +118,16 @@ export class Shell {
           e.preventDefault();
           this.abortSignal = true;
 
+          // If we're inside a readInput() call, abort it cleanly
+          if (this.activeInputAbortResolver) {
+            const abort = this.activeInputAbortResolver;
+            this.activeInputAbortResolver = null;
+            this.activeInputResolver = null;
+            abort();
+            return;
+          }
+
+          // Normal shell Ctrl+C behavior (only when NOT in a readInput sub-prompt)
           if (this.loginState === 'LOGGED_IN' && !this.input.disabled) {
             const currentVal = this.input.value;
             this.print(`<span class="color-accent"><span class="red">${this.currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${this.currentPath.length === 0 ? '~' : '/' + this.currentPath.join('/')}</span># ${currentVal}^C`);
@@ -183,16 +195,32 @@ export class Shell {
       const originalPrefixHTML = this.promptPrefix.innerHTML;
       this.input.disabled = false;
       this.inputLine.style.visibility = 'visible';
-      this.promptPrefix.textContent = promptText;
+      this.promptPrefix.innerHTML = promptText;
       this.input.value = '';
       this.inputDisplay.textContent = '';
       this.focus();
 
-      this.activeInputResolver = (val) => {
+      const cleanup = () => {
         this.input.disabled = true;
         this.inputLine.style.visibility = 'hidden';
         this.promptPrefix.innerHTML = originalPrefixHTML;
+        this.activeInputResolver = null;
+        this.activeInputAbortResolver = null;
+      };
+
+      this.activeInputResolver = (val) => {
+        // Echo the prompt + typed value into the output before hiding
+        this.print(`${promptText}${val}`);
+        cleanup();
         resolve(val);
+      };
+
+      // Allow Ctrl+C to break out of readInput by resolving with null
+      this.activeInputAbortResolver = () => {
+        // Echo the prompt + typed text + ^C before hiding
+        this.print(`${promptText}${this.input.value}^C`);
+        cleanup();
+        resolve(null);
       };
     });
   }
