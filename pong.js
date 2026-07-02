@@ -50,7 +50,7 @@ window.Terminal.games.pong = {
       const width = pongGame.boardWidth;
       const height = pongGame.boardHeight;
 
-      board += '─'.repeat(width + 2) + '\n';
+      board += '┌' + '─'.repeat(width) + '┐\n';
 
       for (let y = 0; y < height; y++) {
         let line = '│';
@@ -89,7 +89,7 @@ window.Terminal.games.pong = {
         board += line;
       }
 
-      board += '─'.repeat(width + 2) + '\n';
+      board += '└' + '─'.repeat(width) + '┘\n';
       board += ` Score: Player ${pongGame.playerScore} ║ CPU ${pongGame.cpuScore}   (Difficulty: ${pongGame.difficulty.toUpperCase()})\n`;
       board += ` Controls: [ArrowUp]/[ArrowDown] to move. Press [Q] to quit.\n`;
 
