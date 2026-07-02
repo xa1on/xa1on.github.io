@@ -22,14 +22,14 @@ window.Terminal.games.pong = {
     // Enter generic gameplay state
     window.Terminal.loginState = 'GAME';
 
-    // Scoped game state variables
+    // Scoped game state variables (Scaled speeds for 40ms intervals)
     const pongGame = {
       playerY: 4,
       cpuY: 4,
       ballX: 22,
       ballY: 5,
-      ballDx: Math.random() > 0.5 ? 1 : -1,
-      ballDy: Math.random() > 0.5 ? 0.5 : -0.5,
+      ballDx: Math.random() > 0.5 ? 0.5 : -0.5,
+      ballDy: Math.random() > 0.5 ? 0.25 : -0.25,
       playerScore: 0,
       cpuScore: 0,
       boardWidth: 44,
@@ -55,14 +55,32 @@ window.Terminal.games.pong = {
       for (let y = 0; y < height; y++) {
         let line = '│';
         for (let x = 0; x < width; x++) {
-          const isLeftPaddle = (x === 1) && (y >= pongGame.playerY && y < pongGame.playerY + pongGame.paddleHeight);
-          const isRightPaddle = (x === width - 2) && (y >= pongGame.cpuY && y < pongGame.cpuY + pongGame.paddleHeight);
-          const isBall = (x === Math.round(pongGame.ballX)) && (y === Math.round(pongGame.ballY));
+          const topY = y + 0.25;
+          const bottomY = y + 0.75;
 
-          if (isLeftPaddle || isRightPaddle) {
+          // Left paddle occupancy
+          const leftTop = (x === 1) && (topY >= pongGame.playerY && topY < pongGame.playerY + pongGame.paddleHeight);
+          const leftBottom = (x === 1) && (bottomY >= pongGame.playerY && bottomY < pongGame.playerY + pongGame.paddleHeight);
+
+          // Right paddle occupancy
+          const rightTop = (x === width - 2) && (topY >= pongGame.cpuY && topY < pongGame.cpuY + pongGame.paddleHeight);
+          const rightBottom = (x === width - 2) && (bottomY >= pongGame.cpuY && bottomY < pongGame.cpuY + pongGame.paddleHeight);
+
+          // Ball occupancy (rounded to nearest half-row index to prevent flashing)
+          const ballXMatch = (x === Math.round(pongGame.ballX));
+          const ballRoundHalfY = Math.round(pongGame.ballY * 2);
+          const ballTop = ballXMatch && (ballRoundHalfY === y * 2);
+          const ballBottom = ballXMatch && (ballRoundHalfY === y * 2 + 1);
+
+          const topOccupied = leftTop || rightTop || ballTop;
+          const bottomOccupied = leftBottom || rightBottom || ballBottom;
+
+          if (topOccupied && bottomOccupied) {
             line += '█';
-          } else if (isBall) {
-            line += '●';
+          } else if (topOccupied) {
+            line += '▀';
+          } else if (bottomOccupied) {
+            line += '▄';
           } else {
             line += ' ';
           }
@@ -84,8 +102,8 @@ window.Terminal.games.pong = {
     function resetBall(direction) {
       pongGame.ballX = Math.floor(pongGame.boardWidth / 2);
       pongGame.ballY = Math.floor(pongGame.boardHeight / 2);
-      pongGame.ballDx = direction;
-      pongGame.ballDy = Math.random() > 0.5 ? 0.5 : -0.5;
+      pongGame.ballDx = direction * 0.5;
+      pongGame.ballDy = Math.random() > 0.5 ? 0.25 : -0.25;
     }
 
     // Attach key listener globally during gameplay
@@ -93,11 +111,11 @@ window.Terminal.games.pong = {
       if (window.Terminal.loginState === 'GAME') {
         if (e.key === 'ArrowUp') {
           e.preventDefault();
-          pongGame.playerY = Math.max(0, pongGame.playerY - 1);
+          pongGame.playerY = Math.max(0, pongGame.playerY - 0.5);
           drawPong();
         } else if (e.key === 'ArrowDown') {
           e.preventDefault();
-          pongGame.playerY = Math.min(pongGame.boardHeight - pongGame.paddleHeight, pongGame.playerY + 1);
+          pongGame.playerY = Math.min(pongGame.boardHeight - pongGame.paddleHeight, pongGame.playerY + 0.5);
           drawPong();
         } else if (e.key === 'q' || e.key === 'Q') {
           e.preventDefault();
@@ -132,11 +150,11 @@ window.Terminal.games.pong = {
         if (pongGame.ballX <= 2 && pongGame.ballDx < 0) {
           if (pongGame.ballY >= pongGame.playerY && pongGame.ballY < pongGame.playerY + pongGame.paddleHeight) {
             pongGame.ballX = 2;
-            pongGame.ballDx = 1;
+            pongGame.ballDx = 0.5;
             const hitPos = pongGame.ballY - pongGame.playerY;
-            if (hitPos === 0) pongGame.ballDy = -0.75;
-            else if (hitPos === 2) pongGame.ballDy = 0.75;
-            else pongGame.ballDy = (Math.random() > 0.5 ? 0.5 : -0.5);
+            if (hitPos < 1.0) pongGame.ballDy = -0.4;
+            else if (hitPos >= 2.0) pongGame.ballDy = 0.4;
+            else pongGame.ballDy = (Math.random() > 0.5 ? 0.2 : -0.2);
           }
         }
 
@@ -144,26 +162,26 @@ window.Terminal.games.pong = {
         if (pongGame.ballX >= pongGame.boardWidth - 3 && pongGame.ballDx > 0) {
           if (pongGame.ballY >= pongGame.cpuY && pongGame.ballY < pongGame.cpuY + pongGame.paddleHeight) {
             pongGame.ballX = pongGame.boardWidth - 3;
-            pongGame.ballDx = -1;
+            pongGame.ballDx = -0.5;
             const hitPos = pongGame.ballY - pongGame.cpuY;
-            if (hitPos === 0) pongGame.ballDy = -0.75;
-            else if (hitPos === 2) pongGame.ballDy = 0.75;
-            else pongGame.ballDy = (Math.random() > 0.5 ? 0.5 : -0.5);
+            if (hitPos < 1.0) pongGame.ballDy = -0.4;
+            else if (hitPos >= 2.0) pongGame.ballDy = 0.4;
+            else pongGame.ballDy = (Math.random() > 0.5 ? 0.2 : -0.2);
           }
         }
 
-        // CPU AI movement
+        // CPU AI movement (Granular tracking)
         const ballTarget = pongGame.ballY;
-        const cpuCenter = pongGame.cpuY + 1;
+        const cpuCenter = pongGame.cpuY + 1.5; // Center of 3-tall paddle
         let moveProbability = 0.45;
         if (pongGame.difficulty === 'medium') moveProbability = 0.70;
         if (pongGame.difficulty === 'hard') moveProbability = 0.92;
 
         if (Math.random() < moveProbability) {
           if (cpuCenter < ballTarget) {
-            pongGame.cpuY = Math.min(pongGame.boardHeight - pongGame.paddleHeight, pongGame.cpuY + 1);
+            pongGame.cpuY = Math.min(pongGame.boardHeight - pongGame.paddleHeight, pongGame.cpuY + 0.25);
           } else if (cpuCenter > ballTarget) {
-            pongGame.cpuY = Math.max(0, pongGame.cpuY - 1);
+            pongGame.cpuY = Math.max(0, pongGame.cpuY - 0.25);
           }
         }
 
@@ -185,7 +203,7 @@ window.Terminal.games.pong = {
         }
 
         drawPong();
-      }, 80);
+      }, 40);
     });
 
     // Cleanup listeners and restore state
