@@ -235,6 +235,7 @@ async function executeCommand(cmdStr) {
   <span class="color-accent">clear</span>          Clear the terminal screen.
   <span class="color-accent">whoami</span>         Print the current session user name.
   <span class="color-accent">date</span>           Display the current system date and time.
+  <span class="color-accent">ping [host]</span>    Simulate pinging a host.
 `);
       break;
 
@@ -331,6 +332,36 @@ async function executeCommand(cmdStr) {
       printOutput(new Date().toString());
       break;
 
+    case 'ping':
+      {
+        const host = args.length > 0 ? args[0] : 'chenghao.li';
+        // Generate a random mock IPv4 address
+        const ip = `${Math.floor(Math.random() * 223) + 1}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 254) + 1}`;
+
+        printOutput(`PING ${host} (${ip}) 56(84) bytes of data.`);
+
+        const times = [];
+        for (let i = 1; i <= 4; i++) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          const time = (Math.random() * 30 + 5).toFixed(3);
+          times.push(parseFloat(time));
+          printOutput(`64 bytes from ${ip}: icmp_seq=${i} ttl=64 time=${time} ms`);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        const totalTime = times.reduce((a, b) => a + b, 0);
+        const min = Math.min(...times).toFixed(3);
+        const avg = (totalTime / times.length).toFixed(3);
+        const max = Math.max(...times).toFixed(3);
+        const mdev = Math.sqrt(times.reduce((acc, val) => acc + Math.pow(val - avg, 2), 0) / times.length).toFixed(3);
+
+        printOutput(`\n--- ${host} ping statistics ---`);
+        printOutput(`4 packets transmitted, 4 received, 0% packet loss, time ${Math.floor(totalTime + 1200)}ms`);
+        printOutput(`rtt min/avg/max/mdev = ${min}/${avg}/${max}/${mdev} ms`);
+      }
+      break;
+
 
 
     default:
@@ -409,7 +440,7 @@ function handleTabAutocomplete() {
   if (isCommandOnly) {
     // Autocomplete commands
     const typedCmd = parts[0].toLowerCase();
-    const availableCmds = ['help', 'ls', 'cd', 'cat', 'clear', 'whoami', 'date'];
+    const availableCmds = ['help', 'ls', 'cd', 'cat', 'clear', 'whoami', 'date', 'ping'];
     const matches = availableCmds.filter(cmd => cmd.startsWith(typedCmd));
 
     if (matches.length === 1) {
