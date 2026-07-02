@@ -1,5 +1,4 @@
-// Register Tetris in modular registry
-window.Terminal.games.tetris = {
+export const tetris = {
   helpText: 'Play a game of Tetris.',
   run: async (args) => {
     // Enter gameplay state

@@ -1,5 +1,4 @@
-// Register Pong Game in modular registry
-window.Terminal.games.pong = {
+export const pong = {
   helpText: 'Play a game of Pong (easy|medium|hard).',
   run: async (args) => {
     let diffText = args.length > 0 ? args[0].toLowerCase() : '';
