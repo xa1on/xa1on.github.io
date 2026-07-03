@@ -7,6 +7,7 @@ import { whoami } from './whoami.js';
 import { date } from './date.js';
 import { ping } from './ping.js';
 import { llm } from './llm.js';
+import { neofetch } from './neofetch.js';
 
 export const commands = {
   help,
@@ -17,5 +18,6 @@ export const commands = {
   whoami,
   date,
   ping,
-  llm
+  llm,
+  neofetch
 };
