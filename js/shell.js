@@ -240,8 +240,6 @@ export class Shell {
       this.inputLine.style.visibility = 'visible';
       this.promptPrefix.innerHTML = promptText;
       this.input.value = '';
-      this.inputDisplay.textContent = '';
-      this.focus();
 
       const cleanup = () => {
         this.input.disabled = true;
@@ -265,6 +263,9 @@ export class Shell {
         cleanup();
         resolve(null);
       };
+
+      this.updateInputDisplay('');
+      this.focus();
     });
   }
 
