@@ -151,6 +151,11 @@ export class Shell {
 
     // Click anywhere to focus input (respecting browser text selections)
     document.addEventListener('click', (e) => {
+      const target = e.target;
+      if (target && (target.tagName === 'A' || target.classList.contains('ls-item') || target.classList.contains('cmd-link') || target.tagName === 'BUTTON')) {
+        audio.playLinkClick();
+      }
+
       if (this.loginState !== 'GAME') {
         const selectedText = window.getSelection().toString();
         if (!selectedText) {

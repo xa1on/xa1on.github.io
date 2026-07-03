@@ -2,7 +2,7 @@ class AudioManager {
   constructor() {
     this.ctx = null;
     this.mainGain = null;
-    
+
     // SSH hum references
     this.humOsc1 = null;
     this.humOsc2 = null;
@@ -39,7 +39,7 @@ class AudioManager {
   setEnabled(enabled) {
     this.enabled = enabled;
     localStorage.setItem('sound_enabled', enabled ? 'true' : 'false');
-    
+
     if (this.mainGain && this.ctx) {
       const now = this.ctx.currentTime;
       this.mainGain.gain.setValueAtTime(this.mainGain.gain.value, now);
@@ -76,26 +76,26 @@ class AudioManager {
     let clickPitch = 1200; // transient frequency
     let clickDuration = 0.015;
     let thockDuration = 0.07;
-    let volume = 0.15;
+    let volume = 0.015;
 
     if (key === ' ') {
       pitch = 110;
       clickPitch = 900;
       clickDuration = 0.02;
       thockDuration = 0.12;
-      volume = 0.2;
+      volume = 0.02;
     } else if (key === 'Enter') {
       pitch = 130;
       clickPitch = 1000;
       clickDuration = 0.025;
       thockDuration = 0.1;
-      volume = 0.18;
+      volume = 0.018;
     } else if (key === 'Backspace') {
       pitch = 170;
       clickPitch = 1400;
       clickDuration = 0.012;
       thockDuration = 0.05;
-      volume = 0.12;
+      volume = 0.012;
     }
 
     const offset = (Math.random() - 0.5) * 15;
@@ -271,6 +271,10 @@ class AudioManager {
       osc.start(now + note.start);
       osc.stop(now + note.start + note.dur + 0.05);
     });
+  }
+  // Link / Button click sound
+  playLinkClick() {
+    this.playBeep(220, 330, 0.06, 'triangle', 0.15);
   }
 
   // Helper for quick pitch sweep playbacks
