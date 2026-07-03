@@ -9,6 +9,7 @@ class AudioManager {
     this.humLfo = null;
     this.humGain = null;
     this.isHumming = false;
+    this.humVolume = 0.04; // Track hum level (booting vs active)
 
     // Load initial preference (default to true)
     this.enabled = localStorage.getItem('sound_enabled') !== 'false';
@@ -37,6 +38,7 @@ class AudioManager {
   }
 
   setEnabled(enabled) {
+    if (this.enabled === enabled) return;
     this.enabled = enabled;
     localStorage.setItem('sound_enabled', enabled ? 'true' : 'false');
 
@@ -44,6 +46,16 @@ class AudioManager {
       const now = this.ctx.currentTime;
       this.mainGain.gain.setValueAtTime(this.mainGain.gain.value, now);
       this.mainGain.gain.linearRampToValueAtTime(enabled ? 1.0 : 0.0, now + 0.05);
+    }
+
+    if (enabled) {
+      if (this.isHumming && !this.humOsc1) {
+        this.startHum(this.humVolume);
+      }
+    } else {
+      const wasHumming = this.isHumming;
+      this.stopHum(true); // Stop immediately to free CPU
+      this.isHumming = wasHumming; // Retain intent to hum
     }
   }
 
@@ -58,7 +70,7 @@ class AudioManager {
       this.ctx.resume().then(() => {
         // If hum was requested before interaction, start it now
         if (this.isHumming && !this.humOsc1) {
-          this.startHum();
+          this.startHum(this.humVolume);
         }
       });
     }
@@ -134,8 +146,11 @@ class AudioManager {
   }
 
   // SSH server / CRT transformer background hum
-  startHum() {
+  startHum(vol = null) {
     this.isHumming = true;
+    if (vol !== null) {
+      this.humVolume = vol;
+    }
     if (!this.enabled) return;
     this.ensureContext();
     if (!this.ctx || this.ctx.state === 'suspended') return;
@@ -146,7 +161,7 @@ class AudioManager {
 
     this.humGain = this.ctx.createGain();
     this.humGain.gain.setValueAtTime(0, now);
-    this.humGain.gain.linearRampToValueAtTime(0.04, now + 0.5); // Fade in over 0.5s
+    this.humGain.gain.linearRampToValueAtTime(this.humVolume, now + 0.5); // Fade in over 0.5s
 
     this.humOsc1 = this.ctx.createOscillator();
     this.humOsc1.type = 'triangle';
@@ -180,27 +195,30 @@ class AudioManager {
   }
 
   fadeHumQuiet() {
+    this.humVolume = 0.012; // Quiet background hum
     if (!this.ctx || !this.humGain) return;
     const now = this.ctx.currentTime;
     this.humGain.gain.setValueAtTime(this.humGain.gain.value, now);
-    this.humGain.gain.linearRampToValueAtTime(0.012, now + 1.5); // Quiet background hum
+    this.humGain.gain.linearRampToValueAtTime(this.humVolume, now + 1.5);
   }
 
-  stopHum() {
+  stopHum(immediate = false) {
     this.isHumming = false;
     if (!this.ctx || !this.humOsc1) return;
 
     const now = this.ctx.currentTime;
-    const fadeOutTime = 1.0;
+    const fadeOutTime = immediate ? 0 : 1.0;
 
-    this.humGain.gain.setValueAtTime(this.humGain.gain.value, now);
-    this.humGain.gain.linearRampToValueAtTime(0, now + fadeOutTime);
+    if (fadeOutTime > 0) {
+      this.humGain.gain.setValueAtTime(this.humGain.gain.value, now);
+      this.humGain.gain.linearRampToValueAtTime(0, now + fadeOutTime);
+    }
 
     const osc1 = this.humOsc1;
     const osc2 = this.humOsc2;
     const lfo = this.humLfo;
 
-    setTimeout(() => {
+    const doStop = () => {
       try {
         osc1.stop();
         osc2.stop();
@@ -208,7 +226,13 @@ class AudioManager {
       } catch (e) {
         // Safe check in case context closed or already stopped
       }
-    }, fadeOutTime * 1000 + 100);
+    };
+
+    if (immediate) {
+      doStop();
+    } else {
+      setTimeout(doStop, fadeOutTime * 1000 + 100);
+    }
 
     this.humOsc1 = null;
     this.humOsc2 = null;

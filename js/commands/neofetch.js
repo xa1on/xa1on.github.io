@@ -26,7 +26,7 @@ export const neofetch = {
 
     // 3. Count VFS nodes recursively
     const countNodes = (node) => {
-      if (typeof node !== 'object') return 1; // File
+      if (typeof node !== 'object') return 0; // File (parent loop already added 1 for it)
       let count = 0;
       for (const key of Object.keys(node)) {
         count += 1 + countNodes(node[key]);

@@ -432,7 +432,10 @@ export class Shell {
       let prefix = argVal;
 
       if (slashIdx !== -1) {
-        const pathPrefix = argVal.slice(0, slashIdx);
+        let pathPrefix = argVal.slice(0, slashIdx);
+        if (pathPrefix === '' && argVal.startsWith('/')) {
+          pathPrefix = '/';
+        }
         prefix = argVal.slice(slashIdx + 1);
 
         const resolvedPrefixPath = this.fileSystem.resolvePath(this.currentPath, pathPrefix);
