@@ -152,7 +152,7 @@ export class Shell {
       }
     });
 
-    // Intercept clicks on interactive ls items
+    // Intercept clicks on interactive ls items and cmd-links
     document.addEventListener('click', async (e) => {
       const target = e.target;
       if (target && target.classList.contains('ls-item')) {
@@ -172,6 +172,14 @@ export class Shell {
           } else if (type === 'file') {
             await this.handleInputSubmit(`cat ${relativePath}`);
           }
+        }
+      } else if (target && target.classList.contains('cmd-link')) {
+        e.stopPropagation();
+        if (this.loginState !== 'LOGGED_IN' || this.isExecutingCommand) return;
+
+        const cmd = target.getAttribute('data-cmd');
+        if (cmd) {
+          await this.handleInputSubmit(cmd);
         }
       }
     });
@@ -523,7 +531,7 @@ System information at ${currentTimestamp}:
   Memory usage: 12%                IPv4 address for eth0: 192.168.1.104
 `, 'color-dim');
     this.print(`
-Type <span class="color-accent">help</span> to view available terminal commands.
+Type (or click ->) <span class="blue cmd-link boot-help-link" data-cmd="help">help</span> to view available terminal commands.
 `);
   }
 }

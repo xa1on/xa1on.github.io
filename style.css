@@ -204,11 +204,12 @@ body {
   color: var(--link-color);
   text-decoration: underline;
   cursor: pointer;
-  transition: text-shadow 0.2s ease;
+  transition: text-shadow 0.2s ease, opacity 0.2s ease;
 }
 
 .color-link:hover {
   text-shadow: 0 0 12px var(--link-color);
+  opacity: 0.75 !important;
 }
 
 .color-error {
@@ -268,14 +269,23 @@ body {
   color: #ffffff;
 }
 
-/* Interactive ls Output Items */
-.ls-item {
+/* Interactive ls Output Items & Command Links */
+.ls-item,
+.cmd-link {
   cursor: pointer;
   user-select: none;
+  transition: opacity 0.2s ease;
 }
 
-.ls-item:hover {
-  text-decoration: underline;
+.ls-item:hover,
+.cmd-link:hover {
+  text-decoration: underline !important;
+  opacity: 0.75 !important;
+}
+
+.boot-help-link {
+  font-weight: bold;
+  text-decoration: underline !important;
 }
 
 /* ==========================================

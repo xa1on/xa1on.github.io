@@ -73,7 +73,7 @@ export const neofetch = {
       `<span class="color-accent">${shell.currentUsername}</span>@<span class="color-accent">chenghao.li</span>`,
       "-".repeat(`${shell.currentUsername}@chenghao.li`.length),
       `<span class="blue">OS</span>:          Arch Linux x86_64`,
-      `<span class="blue">Host</span>:        chenghao.li portfolio`,
+      `<span class="blue">Host</span>:        chenghao.li`,
       `<span class="blue">Kernel</span>:      6.9.3-arch1-1`,
       `<span class="blue">Uptime</span>:      ${uptimeStr}`,
       `<span class="blue">Shell</span>:       ArchaicSh 1.0`,
