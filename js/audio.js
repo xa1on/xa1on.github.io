@@ -126,6 +126,12 @@ class AudioManager {
 
     osc1.connect(gain1);
     gain1.connect(this.mainGain);
+
+    osc1.onended = () => {
+      osc1.disconnect();
+      gain1.disconnect();
+    };
+
     osc1.start(now);
     osc1.stop(now + clickDuration + 0.01);
 
@@ -141,6 +147,12 @@ class AudioManager {
 
     osc2.connect(gain2);
     gain2.connect(this.mainGain);
+
+    osc2.onended = () => {
+      osc2.disconnect();
+      gain2.disconnect();
+    };
+
     osc2.start(now);
     osc2.stop(now + thockDuration + 0.01);
   }
@@ -209,9 +221,10 @@ class AudioManager {
     const now = this.ctx.currentTime;
     const fadeOutTime = immediate ? 0 : 1.0;
 
-    if (fadeOutTime > 0) {
-      this.humGain.gain.setValueAtTime(this.humGain.gain.value, now);
-      this.humGain.gain.linearRampToValueAtTime(0, now + fadeOutTime);
+    const gainNode = this.humGain;
+    if (fadeOutTime > 0 && gainNode) {
+      gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+      gainNode.gain.linearRampToValueAtTime(0, now + fadeOutTime);
     }
 
     const osc1 = this.humOsc1;
@@ -223,6 +236,13 @@ class AudioManager {
         osc1.stop();
         osc2.stop();
         lfo.stop();
+
+        osc1.disconnect();
+        osc2.disconnect();
+        lfo.disconnect();
+        if (gainNode) {
+          gainNode.disconnect();
+        }
       } catch (e) {
         // Safe check in case context closed or already stopped
       }
@@ -286,8 +306,23 @@ class AudioManager {
 
         lfo.start(now + note.start);
         lfo.stop(now + note.start + note.dur);
+
+        lfo.onended = () => {
+          lfo.disconnect();
+          lfoGain.disconnect();
+        };
+
+        osc.onended = () => {
+          osc.disconnect();
+          filter.disconnect();
+          gainNode.disconnect();
+        };
       } else {
         osc.connect(gainNode);
+        osc.onended = () => {
+          osc.disconnect();
+          gainNode.disconnect();
+        };
       }
 
       gainNode.connect(this.mainGain);
@@ -325,6 +360,11 @@ class AudioManager {
 
     osc.connect(gainNode);
     gainNode.connect(this.mainGain);
+
+    osc.onended = () => {
+      osc.disconnect();
+      gainNode.disconnect();
+    };
 
     osc.start(time);
     osc.stop(time + duration + 0.01);

@@ -1,5 +1,6 @@
 import { resolvePath, getNodeByPath } from './fs.js';
 import { audio } from './audio.js';
+import { parseMarkdown, escapeHTML } from './utils/markdown.js';
 
 export class Shell {
   constructor(options = {}) {
@@ -64,7 +65,7 @@ export class Shell {
 
     // Special keyboard listeners (Enter, Up, Down, Tab)
     this.input.addEventListener('keydown', async (e) => {
-      if (this.loginState === 'GAME') {
+      if (this.loginState === 'GAME' || this.loginState === 'BOOTING') {
         return;
       }
 
@@ -149,49 +150,52 @@ export class Shell {
       }
     });
 
-    // Click anywhere to focus input (respecting browser text selections)
-    document.addEventListener('click', (e) => {
+    // Global click delegation handler
+    document.addEventListener('click', async (e) => {
       const target = e.target;
-      if (target && (target.tagName === 'A' || target.classList.contains('ls-item') || target.classList.contains('cmd-link') || target.tagName === 'BUTTON')) {
+      if (!target) return;
+
+      const isInteractive = target.tagName === 'A' || 
+                            target.classList.contains('ls-item') || 
+                            target.classList.contains('cmd-link') || 
+                            target.tagName === 'BUTTON';
+
+      if (isInteractive) {
         audio.playLinkClick();
       }
 
+      // Handle focus redirection
       if (this.loginState !== 'GAME') {
         const selectedText = window.getSelection().toString();
         if (!selectedText) {
           this.focus();
         }
       }
-    });
 
-    // Intercept clicks on interactive ls items and cmd-links
-    document.addEventListener('click', async (e) => {
-      const target = e.target;
-      if (target && target.classList.contains('ls-item')) {
-        e.stopPropagation();
-        if (this.loginState !== 'LOGGED_IN' || this.isExecutingCommand) return;
+      // Handle interactive item clicks (ls-item and cmd-link)
+      if (this.loginState === 'LOGGED_IN' && !this.isExecutingCommand) {
+        if (target.classList.contains('ls-item')) {
+          e.stopPropagation();
+          const type = target.getAttribute('data-type');
+          const path = target.getAttribute('data-path');
 
-        const type = target.getAttribute('data-type');
-        const path = target.getAttribute('data-path');
+          if (path) {
+            const targetPathArr = path.split('/').filter(s => s.length > 0);
+            const relativePath = this.fileSystem.getRelativePath(this.currentPath, targetPathArr);
 
-        if (path) {
-          const targetPathArr = path.split('/').filter(s => s.length > 0);
-          const relativePath = this.fileSystem.getRelativePath(this.currentPath, targetPathArr);
-
-          if (type === 'dir') {
-            await this.handleInputSubmit(`cd ${relativePath}`);
-            await this.handleInputSubmit('ls');
-          } else if (type === 'file') {
-            await this.handleInputSubmit(`cat ${relativePath}`);
+            if (type === 'dir') {
+              await this.handleInputSubmit(`cd ${relativePath}`);
+              await this.handleInputSubmit('ls');
+            } else if (type === 'file') {
+              await this.handleInputSubmit(`cat ${relativePath}`);
+            }
           }
-        }
-      } else if (target && target.classList.contains('cmd-link')) {
-        e.stopPropagation();
-        if (this.loginState !== 'LOGGED_IN' || this.isExecutingCommand) return;
-
-        const cmd = target.getAttribute('data-cmd');
-        if (cmd) {
-          await this.handleInputSubmit(cmd);
+        } else if (target.classList.contains('cmd-link')) {
+          e.stopPropagation();
+          const cmd = target.getAttribute('data-cmd');
+          if (cmd) {
+            await this.handleInputSubmit(cmd);
+          }
         }
       }
     });
@@ -281,21 +285,7 @@ export class Shell {
   }
 
   parseMarkdown(text) {
-    const lines = text.split('\n');
-    const processedLines = lines.map(line => {
-      const headerMatch = line.match(/^(#+)\s*(.*)$/);
-      if (headerMatch) {
-        return `<span class="color-accent">${headerMatch[2]}</span>`;
-      }
-
-      let processed = line;
-      processed = processed.replace(/\*\*(.*?)\*\*/g, '<span class="color-accent">$1</span>');
-      processed = processed.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="color-link" target="_blank">$1</a>');
-      processed = processed.replace(/\`(.*?)\`/g, '<span class="color-accent">$1</span>');
-      return processed;
-    });
-
-    return processedLines.join('\n');
+    return parseMarkdown(text);
   }
 
   clear() {
@@ -314,10 +304,6 @@ export class Shell {
       this.promptPrefix.innerHTML = `<span class="color-accent"><span class="red">${this.currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span>#`;
       this.input.value = '';
       this.updateInputDisplay('');
-    } else if (this.loginState === 'CONNECTING') {
-      this.promptPrefix.textContent = 'Press [Enter] to reconnect...';
-      this.inputDisplay.textContent = '';
-      this.input.value = '';
     } else if (this.loginState === 'BOOTING') {
       this.inputDisplay.textContent = '';
       this.input.value = '';
@@ -348,6 +334,7 @@ export class Shell {
       this.isExecutingCommand = false;
       this.input.disabled = false;
       this.inputLine.style.visibility = 'visible';
+      this.abortSignal = false;
       this.updatePrompt();
       this.focus();
     }
@@ -361,11 +348,12 @@ export class Shell {
 
     const commentMatch = trimmed.match(/(?:\s|^)#.*/);
     let commandPart = trimmed;
-    let printedLine = trimmed;
+    let printedLine = escapeHTML(trimmed);
     if (commentMatch) {
-      commandPart = trimmed.slice(0, commentMatch.index).trim();
-      const commentPartStr = trimmed.slice(commentMatch.index);
-      printedLine = trimmed.slice(0, commentMatch.index) + `<span class="color-dim">${commentPartStr}</span>`;
+      const commandPartStr = trimmed.slice(0, commentMatch.index);
+      const commentPartStrFull = trimmed.slice(commentMatch.index);
+      printedLine = escapeHTML(commandPartStr) + `<span class="color-dim">${escapeHTML(commentPartStrFull)}</span>`;
+      commandPart = commandPartStr.trim();
     }
 
     this.print(`<span class="color-accent"><span class="red">${this.currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${printedLine}`);

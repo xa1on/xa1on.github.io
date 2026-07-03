@@ -14,14 +14,26 @@ export const neofetch = {
     // 2. Detect Browser
     let browser = "Unknown";
     const ua = navigator.userAgent;
-    if (ua.includes("Chrome") && !ua.includes("Edg") && !ua.includes("OPR")) browser = "Chrome";
-    else if (ua.includes("Safari") && !ua.includes("Chrome")) browser = "Safari";
-    else if (ua.includes("Firefox")) browser = "Firefox";
-    else if (ua.includes("Edg")) browser = "Edge";
-    else if (ua.includes("OPR")) browser = "Opera";
-    const match = ua.match(/(Chrome|Safari|Firefox|Edge|Edg|OPR)\/([\d.]+)/);
-    if (match) {
-      browser = `${browser} ${match[2].split('.')[0]}`;
+    if (ua.includes("Edg/")) {
+      browser = "Edge";
+      const match = ua.match(/Edg\/([\d.]+)/);
+      if (match) browser += ` ${match[1].split('.')[0]}`;
+    } else if (ua.includes("OPR/") || ua.includes("Opera/")) {
+      browser = "Opera";
+      const match = ua.match(/(?:OPR|Opera)\/([\d.]+)/);
+      if (match) browser += ` ${match[1].split('.')[0]}`;
+    } else if (ua.includes("Chrome/")) {
+      browser = "Chrome";
+      const match = ua.match(/Chrome\/([\d.]+)/);
+      if (match) browser += ` ${match[1].split('.')[0]}`;
+    } else if (ua.includes("Firefox/")) {
+      browser = "Firefox";
+      const match = ua.match(/Firefox\/([\d.]+)/);
+      if (match) browser += ` ${match[1].split('.')[0]}`;
+    } else if (ua.includes("Safari/") && !ua.includes("Chrome")) {
+      browser = "Safari";
+      const versionMatch = ua.match(/Version\/([\d.]+)/) || ua.match(/Safari\/([\d.]+)/);
+      if (versionMatch) browser += ` ${versionMatch[1].split('.')[0]}`;
     }
 
     // 3. Count VFS nodes recursively
