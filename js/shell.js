@@ -53,7 +53,7 @@ export class Shell {
 
     // Input visual mirroring
     this.input.addEventListener('input', (e) => {
-      this.inputDisplay.textContent = e.target.value;
+      this.updateInputDisplay(e.target.value);
       if (this.cursor) {
         this.cursor.style.animation = 'none';
         void this.cursor.offsetHeight; // force reflow to restart animation
@@ -93,7 +93,7 @@ export class Shell {
         if (this.commandHistory.length > 0 && this.historyIndex > 0) {
           this.historyIndex--;
           this.input.value = this.commandHistory[this.historyIndex];
-          this.inputDisplay.textContent = this.commandHistory[this.historyIndex];
+          this.updateInputDisplay(this.commandHistory[this.historyIndex]);
         }
       } else if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -101,7 +101,7 @@ export class Shell {
         if (this.historyIndex < this.commandHistory.length - 1) {
           this.historyIndex++;
           this.input.value = this.commandHistory[this.historyIndex];
-          this.inputDisplay.textContent = this.commandHistory[this.historyIndex];
+          this.updateInputDisplay(this.commandHistory[this.historyIndex]);
         } else if (this.historyIndex === this.commandHistory.length - 1) {
           this.historyIndex = this.commandHistory.length;
           this.input.value = '';
@@ -191,6 +191,18 @@ export class Shell {
 
     this.body.scrollTop = this.body.scrollHeight;
     return line;
+  }
+
+  updateInputDisplay(text) {
+    const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const commentMatch = text.match(/(?:\s|^)#.*/);
+    if (commentMatch) {
+      const commandPart = text.slice(0, commentMatch.index);
+      const commentPart = text.slice(commentMatch.index);
+      this.inputDisplay.innerHTML = escapeHTML(commandPart) + `<span class="color-dim">${escapeHTML(commentPart)}</span>`;
+    } else {
+      this.inputDisplay.textContent = text;
+    }
   }
 
   readInput(promptText) {
@@ -306,9 +318,21 @@ export class Shell {
     if (trimmed === '') return;
 
     const displayPath = this.currentPath.length === 0 ? '~' : '/' + this.currentPath.join('/');
-    this.print(`<span class="color-accent"><span class="red">${this.currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${trimmed}`);
 
-    const parts = trimmed.split(/\s+/);
+    const commentMatch = trimmed.match(/(?:\s|^)#.*/);
+    let commandPart = trimmed;
+    let printedLine = trimmed;
+    if (commentMatch) {
+      commandPart = trimmed.slice(0, commentMatch.index).trim();
+      const commentPartStr = trimmed.slice(commentMatch.index);
+      printedLine = trimmed.slice(0, commentMatch.index) + `<span class="color-dim">${commentPartStr}</span>`;
+    }
+
+    this.print(`<span class="color-accent"><span class="red">${this.currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${printedLine}`);
+
+    if (commandPart === '') return;
+
+    const parts = commandPart.split(/\s+/);
     const command = parts[0].toLowerCase();
     const args = parts.slice(1);
 
@@ -354,12 +378,12 @@ export class Shell {
 
       if (matches.length === 1) {
         this.input.value = matches[0] + ' ';
-        this.inputDisplay.textContent = this.input.value;
+        this.updateInputDisplay(this.input.value);
       } else if (matches.length > 1) {
         const lcp = getLongestCommonPrefix(matches);
         if (lcp.length > typedCmd.length) {
           this.input.value = lcp;
-          this.inputDisplay.textContent = this.input.value;
+          this.updateInputDisplay(this.input.value);
         } else {
           this.print(matches.join('    '), 'color-accent');
           const displayPath = this.currentPath.length === 0 ? '~' : '/' + this.currentPath.join('/');
@@ -401,14 +425,14 @@ export class Shell {
 
         parts[parts.length - 1] = completedArg;
         this.input.value = parts.join(' ');
-        this.inputDisplay.textContent = this.input.value;
+        this.updateInputDisplay(this.input.value);
       } else if (matches.length > 1) {
         const lcp = getLongestCommonPrefix(matches);
         if (lcp.length > prefix.length) {
           const completedPrefix = (slashIdx !== -1 ? argVal.slice(0, slashIdx + 1) : '') + lcp;
           parts[parts.length - 1] = completedPrefix;
           this.input.value = parts.join(' ');
-          this.inputDisplay.textContent = this.input.value;
+          this.updateInputDisplay(this.input.value);
         } else {
           const formattedMatches = matches.map(matchedName => {
             const isDirNode = matchedName === '..' || typeof targetDir[matchedName] === 'object';
@@ -433,7 +457,7 @@ export class Shell {
     let charIndex = 0;
 
     const typeEffect = setInterval(() => {
-      this.inputDisplay.textContent += cmdText[charIndex];
+      this.updateInputDisplay(cmdText.slice(0, charIndex + 1));
       charIndex++;
       if (charIndex >= cmdText.length) {
         clearInterval(typeEffect);
@@ -446,11 +470,11 @@ export class Shell {
           this.promptPrefix.innerHTML = `<span class="color-accent"><span class="red">root</span>@chenghao.li</span>:<span class="color-dir">~</span>#`;
 
           setTimeout(() => {
-            const lsText = 'ls';
+            const lsText = 'ls # click items to navigate, or use cat/cd';
             let lsIndex = 0;
 
             const lsTypeEffect = setInterval(() => {
-              this.inputDisplay.textContent += lsText[lsIndex];
+              this.updateInputDisplay(lsText.slice(0, lsIndex + 1));
               lsIndex++;
 
               if (lsIndex >= lsText.length) {
@@ -460,7 +484,7 @@ export class Shell {
                   this.inputDisplay.textContent = '';
                   this.loginState = 'LOGGED_IN';
                   this.input.disabled = false;
-                  await this.handleInputSubmit('ls');
+                  await this.handleInputSubmit('ls # click items to navigate, or use cat/cd');
                 }, 400);
               }
             }, 50);
