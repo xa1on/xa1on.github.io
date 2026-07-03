@@ -56,7 +56,7 @@ export const pong = {
       board += '┌' + '─'.repeat(width) + '┐\n';
 
       for (let y = 0; y < height; y++) {
-        let line = '│';
+        let line = '<span class="color-dim">│</span>';
         for (let x = 0; x < width; x++) {
           const topY = y + 0.25;
           const bottomY = y + 0.75;
@@ -75,20 +75,26 @@ export const pong = {
           const ballTop = ballXMatch && (ballRoundHalfY === y * 2);
           const ballBottom = ballXMatch && (ballRoundHalfY === y * 2 + 1);
 
-          const topOccupied = leftTop || rightTop || ballTop;
-          const bottomOccupied = leftBottom || rightBottom || ballBottom;
+          let topType = null;
+          if (leftTop || rightTop) topType = 'paddle';
+          else if (ballTop) topType = 'ball';
 
-          if (topOccupied && bottomOccupied) {
-            line += '█';
-          } else if (topOccupied) {
-            line += '▀';
-          } else if (bottomOccupied) {
-            line += '▄';
-          } else {
-            line += ' ';
+          let bottomType = null;
+          if (leftBottom || rightBottom) bottomType = 'paddle';
+          else if (ballBottom) bottomType = 'ball';
+
+          let cellChar = ' ';
+          if (topType && bottomType) {
+            const type = (topType === 'ball' || bottomType === 'ball') ? 'ball' : 'paddle';
+            cellChar = type === 'ball' ? '<span class="red">█</span>' : '<span class="blue">█</span>';
+          } else if (topType) {
+            cellChar = topType === 'ball' ? '<span class="red">▀</span>' : '<span class="blue">▀</span>';
+          } else if (bottomType) {
+            cellChar = bottomType === 'ball' ? '<span class="red">▄</span>' : '<span class="blue">▄</span>';
           }
+          line += cellChar;
         }
-        line += '│\n';
+        line += '<span class="color-dim">│</span>\n';
         board += line;
       }
 
@@ -96,7 +102,7 @@ export const pong = {
       board += ` Score: Player ${pongGame.playerScore} ║ CPU ${pongGame.cpuScore}   (Difficulty: ${pongGame.difficulty.toUpperCase()})\n`;
       board += ` Controls: [ArrowUp]/[ArrowDown] to move. Press [Q] to quit.\n`;
 
-      gameContainer.textContent = board;
+      gameContainer.innerHTML = board;
       shell.body.scrollTop = shell.body.scrollHeight;
     }
 
