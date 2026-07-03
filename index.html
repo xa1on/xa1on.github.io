@@ -8,6 +8,15 @@
   <title>root@chenghao.li: ~</title>
   <link rel="icon" type="image/x-icon" href="assets/favicon/favicon.ico">
   <link rel="stylesheet" href="style.css">
+  <script>
+    window.onerror = function(msg, url, line, col, error) {
+      alert("Error: " + msg + "\nURL: " + url + "\nLine: " + line + "\nCol: " + col + "\nStack: " + (error ? error.stack : ''));
+      return false;
+    };
+    window.addEventListener('unhandledrejection', function(event) {
+      alert("Unhandled Rejection: " + event.reason);
+    });
+  </script>
 </head>
 
 <body>

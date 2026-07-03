@@ -23,7 +23,6 @@ export class Shell {
 
     this.fileSystem = options.fileSystem || null;
     this.commands = options.commands || {};
-    this.games = {}; // Registered games
   }
 
   mount() {
@@ -343,11 +342,6 @@ export class Shell {
       return;
     }
 
-    if (this.games[command]) {
-      await this.games[command].run(args, this);
-      return;
-    }
-
     this.print(`command not found: ${command}. Type 'help' to see list of commands.`, 'color-error');
   }
 
@@ -373,7 +367,7 @@ export class Shell {
 
     if (isCommandOnly) {
       const typedCmd = parts[0].toLowerCase();
-      const availableCmds = [...Object.keys(this.commands), ...Object.keys(this.games)];
+      const availableCmds = Object.keys(this.commands);
       const matches = availableCmds.filter(cmd => cmd.startsWith(typedCmd));
 
       if (matches.length === 1) {

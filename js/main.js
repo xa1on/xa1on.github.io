@@ -1,6 +1,6 @@
 import { FileSystem } from './fs.js';
 import { Shell } from './shell.js';
-import { commands } from './commands.js';
+import { commands } from './commands/index.js';
 import { pong } from '../games/pong.js';
 import { tetris } from '../games/tetris.js';
 
@@ -8,12 +8,12 @@ import { tetris } from '../games/tetris.js';
 const fileSystem = new FileSystem();
 const shell = new Shell({
   fileSystem,
-  commands
+  commands: {
+    ...commands,
+    pong: { ...pong, category: 'game' },
+    tetris: { ...tetris, category: 'game' }
+  }
 });
-
-// Register games onto the shell environment
-shell.games.pong = pong;
-shell.games.tetris = tetris;
 
 // Initialize event listeners and start shell lifecycle
 shell.mount();
