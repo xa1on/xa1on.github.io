@@ -1,19 +1,19 @@
 export const pong = {
   helpText: 'Play a game of Pong (easy|medium|hard).',
-  run: async (args) => {
+  run: async (args, shell) => {
     let diffText = args.length > 0 ? args[0].toLowerCase() : '';
 
     // Choose difficulty if none specified or invalid
     while (diffText !== 'easy' && diffText !== 'medium' && diffText !== 'hard' && diffText !== '1' && diffText !== '2' && diffText !== '3') {
-      window.Terminal.print('Select difficulty:\n  [1] Easy\n  [2] Medium\n  [3] Hard');
-      const response = await window.Terminal.readInput('Choose difficulty (1-3): ');
+      shell.print('Select difficulty:\n  [1] Easy\n  [2] Medium\n  [3] Hard');
+      const response = await shell.readInput('Choose difficulty (1-3): ');
       if (response === null) {
-        window.Terminal.print('Pong cancelled.', 'color-dim');
+        shell.print('Pong cancelled.', 'color-dim');
         return;
       }
       diffText = response.trim().toLowerCase();
       if (diffText === '') {
-        window.Terminal.print('Pong cancelled.', 'color-dim');
+        shell.print('Pong cancelled.', 'color-dim');
         return;
       }
     }
@@ -23,7 +23,7 @@ export const pong = {
     if (diffText === '3' || diffText === 'hard') difficulty = 'hard';
 
     // Enter generic gameplay state
-    window.Terminal.loginState = 'GAME';
+    shell.loginState = 'GAME';
 
     // Scoped game state variables (Scaled speeds for 40ms intervals)
     const pongGame = {
@@ -46,7 +46,7 @@ export const pong = {
     gameContainer.style.fontFamily = 'monospace';
     gameContainer.style.lineHeight = '1.15';
     gameContainer.style.color = 'var(--text-color)';
-    window.Terminal.output.appendChild(gameContainer);
+    shell.output.appendChild(gameContainer);
 
     function drawPong() {
       let board = '';
@@ -97,7 +97,7 @@ export const pong = {
       board += ` Controls: [ArrowUp]/[ArrowDown] to move. Press [Q] to quit.\n`;
 
       gameContainer.textContent = board;
-      window.Terminal.body.scrollTop = window.Terminal.body.scrollHeight;
+      shell.body.scrollTop = shell.body.scrollHeight;
     }
 
     drawPong();
@@ -111,7 +111,7 @@ export const pong = {
 
     // Attach key listener globally during gameplay
     const keyHandler = (e) => {
-      if (window.Terminal.loginState === 'GAME') {
+      if (shell.loginState === 'GAME') {
         if (e.key === 'ArrowUp') {
           e.preventDefault();
           pongGame.playerY = Math.max(0, pongGame.playerY - 0.5);
@@ -130,7 +130,7 @@ export const pong = {
 
     await new Promise((resolve) => {
       const gameInterval = setInterval(() => {
-        if (pongGame.gameOver || window.Terminal.abortSignal) {
+        if (pongGame.gameOver || shell.abortSignal) {
           clearInterval(gameInterval);
           resolve();
           return;
@@ -211,16 +211,16 @@ export const pong = {
 
     // Cleanup listeners and restore state
     document.removeEventListener('keydown', keyHandler);
-    window.Terminal.loginState = 'LOGGED_IN';
+    shell.loginState = 'LOGGED_IN';
 
     if (pongGame.playerScore >= 5) {
-      window.Terminal.print('Congratulations! You won the match!', 'color-green');
+      shell.print('Congratulations! You won the match!', 'color-green');
     } else if (pongGame.cpuScore >= 5) {
-      window.Terminal.print('Game Over! The CPU won the match.', 'color-error');
-    } else if (window.Terminal.abortSignal) {
-      window.Terminal.print('Pong game interrupted.', 'color-dim');
+      shell.print('Game Over! The CPU won the match.', 'color-error');
+    } else if (shell.abortSignal) {
+      shell.print('Pong game interrupted.', 'color-dim');
     } else {
-      window.Terminal.print('Pong game terminated.', 'color-dim');
+      shell.print('Pong game terminated.', 'color-dim');
     }
   }
 };

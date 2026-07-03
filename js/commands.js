@@ -1,5 +1,3 @@
-import { getNodeByPath, resolvePath } from './fs.js';
-
 export const commands = {
   help: {
     helpText: 'List available commands.',
@@ -17,20 +15,38 @@ export const commands = {
   ls: {
     helpText: 'List contents of the current directory.',
     run: async (args, shell) => {
-      const currentDir = getNodeByPath(shell.fileSystem.root, shell.currentPath);
-      if (currentDir && typeof currentDir === 'object') {
-        const items = Object.keys(currentDir);
-        const currentPathStr = shell.currentPath.join('/');
+      let targetPath = shell.currentPath;
+      if (args.length > 0) {
+        const pathArg = args[0];
+        const resolved = shell.fileSystem.resolvePath(shell.currentPath, pathArg);
+        if (resolved === null) {
+          shell.print(`ls: no such file or directory: ${pathArg}`, 'color-error');
+          return;
+        }
+        targetPath = resolved;
+      }
+
+      const targetNode = shell.fileSystem.getNodeByPath(targetPath);
+      if (targetNode === null) {
+        shell.print('ls: file system error.', 'color-error');
+      } else if (typeof targetNode !== 'object') {
+        // Target is a file, just print the filename as an ls item
+        const absolutePath = '/' + targetPath.join('/');
+        const fileName = targetPath[targetPath.length - 1];
+        shell.print(`<span class="color-file ls-item" data-type="file" data-path="${absolutePath}">${fileName}</span>`);
+      } else {
+        const items = Object.keys(targetNode);
+        const targetPathStr = targetPath.join('/');
         const formattedItems = items.map(name => {
-          const isDir = typeof currentDir[name] === 'object';
-          const absolutePath = '/' + (currentPathStr ? currentPathStr + '/' : '') + name;
+          const isDir = typeof targetNode[name] === 'object';
+          const absolutePath = '/' + (targetPathStr ? targetPathStr + '/' : '') + name;
           return isDir
             ? `<span class="color-dir ls-item" data-type="dir" data-path="${absolutePath}">${name}/</span>`
             : `<span class="color-file ls-item" data-type="file" data-path="${absolutePath}">${name}</span>`;
         });
 
-        if (shell.currentPath.length > 0) {
-          const parentPath = '/' + shell.currentPath.slice(0, -1).join('/');
+        if (targetPath.length > 0) {
+          const parentPath = '/' + targetPath.slice(0, -1).join('/');
           formattedItems.unshift(`<span class="color-dir ls-item" data-type="dir" data-path="${parentPath}">../</span>`);
         }
 
@@ -39,8 +55,6 @@ export const commands = {
         } else {
           shell.print(formattedItems.join('   '));
         }
-      } else {
-        shell.print('ls: cannot open directory: file system error.', 'color-error');
       }
     }
   },
@@ -51,11 +65,11 @@ export const commands = {
         shell.currentPath = [];
       } else {
         const pathArg = args[0];
-        const resolved = resolvePath(shell.fileSystem.root, shell.currentPath, pathArg);
+        const resolved = shell.fileSystem.resolvePath(shell.currentPath, pathArg);
         if (resolved === null) {
           shell.print(`cd: no such file or directory: ${pathArg}`, 'color-error');
         } else {
-          const targetNode = getNodeByPath(shell.fileSystem.root, resolved);
+          const targetNode = shell.fileSystem.getNodeByPath(resolved);
           if (typeof targetNode !== 'object') {
             shell.print(`cd: not a directory: ${pathArg}`, 'color-error');
           } else {
@@ -73,12 +87,12 @@ export const commands = {
         return;
       }
       const fileArg = args[0];
-      const resolved = resolvePath(shell.fileSystem.root, shell.currentPath, fileArg);
+      const resolved = shell.fileSystem.resolvePath(shell.currentPath, fileArg);
       if (resolved === null) {
         shell.print(`cat: ${fileArg}: No such file or directory`, 'color-error');
         return;
       }
-      const targetNode = getNodeByPath(shell.fileSystem.root, resolved);
+      const targetNode = shell.fileSystem.getNodeByPath(resolved);
       if (targetNode === null) {
         shell.print(`cat: ${fileArg}: No such file or directory`, 'color-error');
       } else if (typeof targetNode === 'object') {

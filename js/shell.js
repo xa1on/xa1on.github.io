@@ -19,6 +19,7 @@ export class Shell {
     this.activeInputResolver = null;
     this.activeInputAbortResolver = null;
     this.abortSignal = false;
+    this.isExecutingCommand = false;
 
     this.fileSystem = options.fileSystem || null;
     this.commands = options.commands || {};
@@ -26,8 +27,8 @@ export class Shell {
   }
 
   mount() {
-    // Expose compatibility namespace for scripts
-    window.Terminal = this;
+    // Expose compatibility namespace for scripts if needed, but decoupled internally
+
 
     // Sync glow backdrop throttled to prevent composition lag
     if (this.glowBackdrop && this.output) {
@@ -75,6 +76,8 @@ export class Shell {
           this.activeInputResolver = null;
           this.activeInputAbortResolver = null;
           resolve(val);
+        } else if (e.key === 'Tab') {
+          e.preventDefault();
         }
         return;
       }
@@ -155,7 +158,7 @@ export class Shell {
       const target = e.target;
       if (target && target.classList.contains('ls-item')) {
         e.stopPropagation();
-        if (this.loginState !== 'LOGGED_IN') return;
+        if (this.loginState !== 'LOGGED_IN' || this.isExecutingCommand) return;
 
         const type = target.getAttribute('data-type');
         const path = target.getAttribute('data-path');
@@ -270,8 +273,9 @@ export class Shell {
   }
 
   async handleInputSubmit(val) {
-    if (this.loginState !== 'LOGGED_IN') return;
+    if (this.loginState !== 'LOGGED_IN' || this.isExecutingCommand) return;
 
+    this.isExecutingCommand = true;
     const trimmed = val.trim();
     if (trimmed !== '') {
       if (this.commandHistory.length === 0 || this.commandHistory[this.commandHistory.length - 1] !== trimmed) {
@@ -289,6 +293,7 @@ export class Shell {
       this.print(`Error executing command: ${err.message}`, 'color-error');
       console.error(err);
     } finally {
+      this.isExecutingCommand = false;
       this.input.disabled = false;
       this.inputLine.style.visibility = 'visible';
       this.updatePrompt();
@@ -315,7 +320,7 @@ export class Shell {
     }
 
     if (this.games[command]) {
-      await this.games[command].run(args);
+      await this.games[command].run(args, this);
       return;
     }
 

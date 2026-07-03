@@ -1,8 +1,8 @@
 export const tetris = {
   helpText: 'Play a game of Tetris.',
-  run: async (args) => {
+  run: async (args, shell) => {
     // Enter gameplay state
-    window.Terminal.loginState = 'GAME';
+    shell.loginState = 'GAME';
 
     return new Promise((resolve) => {
 
@@ -85,7 +85,7 @@ export const tetris = {
       gameContainer.style.fontFamily = 'monospace';
       gameContainer.style.lineHeight = '1.15';
       gameContainer.style.color = 'var(--text-color)';
-      window.Terminal.output.appendChild(gameContainer);
+      shell.output.appendChild(gameContainer);
 
       function drawTetris() {
         let screen = '';
@@ -245,7 +245,7 @@ export const tetris = {
         screen += '└' + '──'.repeat(COLS) + '┘  [Q] to Quit\n';
 
         gameContainer.innerHTML = screen;
-        window.Terminal.body.scrollTop = window.Terminal.body.scrollHeight;
+        shell.body.scrollTop = shell.body.scrollHeight;
       }
 
       drawTetris();
@@ -361,7 +361,7 @@ export const tetris = {
       let animationId = null;
 
       function gameLoop() {
-        if (gameOver || window.Terminal.abortSignal) {
+        if (gameOver || shell.abortSignal) {
           cancelAnimationFrame(animationId);
           cleanup();
           return;
@@ -378,7 +378,7 @@ export const tetris = {
 
       // Keyboard controls handler
       const keyHandler = (e) => {
-        if (window.Terminal.loginState === 'GAME' && !gameOver) {
+        if (shell.loginState === 'GAME' && !gameOver) {
           if (e.key === 'ArrowLeft') {
             e.preventDefault();
             if (!checkCollision(activePiece.matrix, activePieceX - 1, activePieceY)) {
@@ -467,14 +467,14 @@ export const tetris = {
       // End game cleanup
       function cleanup() {
         document.removeEventListener('keydown', keyHandler);
-        window.Terminal.loginState = 'LOGGED_IN';
+        shell.loginState = 'LOGGED_IN';
 
-        if (window.Terminal.abortSignal) {
-          window.Terminal.print('Tetris interrupted.', 'color-dim');
+        if (shell.abortSignal) {
+          shell.print('Tetris interrupted.', 'color-dim');
         } else {
-          window.Terminal.print('--- GAME OVER ---', 'color-error');
-          window.Terminal.print(`Final Score: <span class="color-accent">${score}</span>`);
-          window.Terminal.print(`Lines Cleared: <span class="color-accent">${linesCleared}</span>`);
+          shell.print('--- GAME OVER ---', 'color-error');
+          shell.print(`Final Score: <span class="color-accent">${score}</span>`);
+          shell.print(`Lines Cleared: <span class="color-accent">${linesCleared}</span>`);
         }
         resolve();
       }
