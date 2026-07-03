@@ -1,0 +1,21 @@
+export const cd = {
+  helpText: 'Change the current working directory.',
+  run: async (args, shell) => {
+    if (args.length === 0 || args[0] === '~') {
+      shell.currentPath = [];
+    } else {
+      const pathArg = args[0];
+      const resolved = shell.fileSystem.resolvePath(shell.currentPath, pathArg);
+      if (resolved === null) {
+        shell.print(`cd: no such file or directory: ${pathArg}`, 'color-error');
+      } else {
+        const targetNode = shell.fileSystem.getNodeByPath(resolved);
+        if (typeof targetNode !== 'object') {
+          shell.print(`cd: not a directory: ${pathArg}`, 'color-error');
+        } else {
+          shell.currentPath = resolved;
+        }
+      }
+    }
+  }
+};
