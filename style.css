@@ -288,6 +288,26 @@ body {
   text-decoration: underline !important;
 }
 
+.input-placeholder {
+  position: relative;
+  z-index: 11;
+}
+
+.placeholder-text {
+  opacity: 0.35 !important;
+}
+
+.placeholder-help-link {
+  font-weight: bold;
+  text-decoration: underline !important;
+  opacity: 0.35 !important;
+  transition: opacity 0.2s ease;
+}
+
+.placeholder-help-link:hover {
+  opacity: 1 !important;
+}
+
 /* ==========================================
    Interactive Input Line & Cursor
    ========================================== */

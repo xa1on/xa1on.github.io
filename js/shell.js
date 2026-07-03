@@ -23,6 +23,7 @@ export class Shell {
 
     this.fileSystem = options.fileSystem || null;
     this.commands = options.commands || {};
+    this.placeholder = document.getElementById('input-placeholder');
   }
 
   mount() {
@@ -201,6 +202,26 @@ export class Shell {
   }
 
   updateInputDisplay(text) {
+    // 1. Toggle placeholder visibility (only show when logged in and no sub-prompt)
+    if (this.loginState === 'LOGGED_IN' && !this.activeInputResolver && text === '') {
+      if (this.placeholder) this.placeholder.style.display = 'inline';
+    } else {
+      if (this.placeholder) this.placeholder.style.display = 'none';
+    }
+
+    // 2. Clear text if empty
+    if (text === '') {
+      this.inputDisplay.textContent = '';
+      return;
+    }
+
+    // 3. For sub-prompt input resolver, render raw text
+    if (this.activeInputResolver) {
+      this.inputDisplay.textContent = text;
+      return;
+    }
+
+    // 4. Render standard text and dim comments
     const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const commentMatch = text.match(/(?:\s|^)#.*/);
     if (commentMatch) {
@@ -279,8 +300,8 @@ export class Shell {
     if (this.loginState === 'LOGGED_IN') {
       const displayPath = this.currentPath.length === 0 ? '~' : '/' + this.currentPath.join('/');
       this.promptPrefix.innerHTML = `<span class="color-accent"><span class="red">${this.currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span>#`;
-      this.inputDisplay.textContent = '';
       this.input.value = '';
+      this.updateInputDisplay('');
     } else if (this.loginState === 'CONNECTING') {
       this.promptPrefix.textContent = 'Press [Enter] to reconnect...';
       this.inputDisplay.textContent = '';
@@ -530,8 +551,6 @@ System information at ${currentTimestamp}:
   Usage of /:   38.4% of 50GB      Users logged in:       2
   Memory usage: 12%                IPv4 address for eth0: 192.168.1.104
 `, 'color-dim');
-    this.print(`
-Type (or click ->) <span class="blue cmd-link boot-help-link" data-cmd="help">help</span> to view available terminal commands.
-`);
+    this.print(` `);
   }
 }

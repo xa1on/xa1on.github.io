@@ -34,7 +34,11 @@
     <div class="terminal-input-line" id="input-line">
       <span class="prompt-prefix" id="prompt-prefix"></span>
       <span class="input-container">
-        <span class="input-display" id="input-display"></span><span class="terminal-cursor" id="cursor"></span>
+        <span class="input-display" id="input-display"></span><span class="terminal-cursor" id="cursor"></span><span
+          class="input-placeholder" id="input-placeholder" style="display: none; margin-left: 8px;"><span
+            class="placeholder-text">Type (or click ->) '</span><span class="blue cmd-link placeholder-help-link"
+            data-cmd="help">help</span><span class="placeholder-text">' to view available terminal
+            commands</span></span>
         <!-- Hidden input for typing capturing -->
         <input type="text" id="terminal-input" autocomplete="off" spellcheck="false" autofocus>
       </span>
