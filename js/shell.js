@@ -1,4 +1,5 @@
 import { resolvePath, getNodeByPath } from './fs.js';
+import { audio } from './audio.js';
 
 export class Shell {
   constructor(options = {}) {
@@ -65,6 +66,11 @@ export class Shell {
     this.input.addEventListener('keydown', async (e) => {
       if (this.loginState === 'GAME') {
         return;
+      }
+
+      const ignoredKeys = ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Escape'];
+      if (!ignoredKeys.includes(e.key)) {
+        audio.playKeyclick(e.key);
       }
 
       if (this.activeInputResolver) {
@@ -477,11 +483,14 @@ export class Shell {
     this.promptPrefix.innerHTML = '<span class="color-accent">C:\\Users\\cli&gt;</span>';
     this.inputDisplay.textContent = '';
 
+    audio.startHum();
+
     const cmdText = 'ssh root@chenghao.li';
     let charIndex = 0;
 
     const typeEffect = setInterval(() => {
       this.updateInputDisplay(cmdText.slice(0, charIndex + 1));
+      audio.playKeyclick(cmdText[charIndex]);
       charIndex++;
       if (charIndex >= cmdText.length) {
         clearInterval(typeEffect);
@@ -490,6 +499,7 @@ export class Shell {
           this.print('<span class="color-accent">C:\\Users\\cli&gt;</span> ssh root@chenghao.li');
           this.inputDisplay.textContent = '';
 
+          audio.playBootChime();
           this.printMOTD();
           this.promptPrefix.innerHTML = `<span class="color-accent"><span class="red">root</span>@chenghao.li</span>:<span class="color-dir">~</span>#`;
 
@@ -499,6 +509,7 @@ export class Shell {
 
             const lsTypeEffect = setInterval(() => {
               this.updateInputDisplay(lsText.slice(0, lsIndex + 1));
+              audio.playKeyclick(lsText[lsIndex]);
               lsIndex++;
 
               if (lsIndex >= lsText.length) {
@@ -508,6 +519,7 @@ export class Shell {
                   this.inputDisplay.textContent = '';
                   this.loginState = 'LOGGED_IN';
                   this.input.disabled = false;
+                  audio.fadeHumQuiet();
                   await this.handleInputSubmit('ls # click items to navigate, or use cat/cd');
                 }, 400);
               }

@@ -1,3 +1,5 @@
+import { audio } from '../js/audio.js';
+
 export const tetris = {
   helpText: 'Play a game of Tetris.',
   run: async (args, shell) => {
@@ -326,7 +328,13 @@ export const tetris = {
           linesCleared += rowsToClear.length;
 
           // Level up every 10 lines
-          level = Math.floor(linesCleared / 10) + 1;
+          const newLevel = Math.floor(linesCleared / 10) + 1;
+          if (newLevel > level) {
+            level = newLevel;
+            audio.playTetrisLevelUp();
+          } else {
+            audio.playTetrisLine();
+          }
         }
       }
 
@@ -338,6 +346,7 @@ export const tetris = {
           activePieceY += 0.5;
         } else {
           mergePiece();
+          audio.playTetrisLock();
           clearRows();
 
           // Spawn next piece
@@ -350,6 +359,7 @@ export const tetris = {
           // Check immediate spawn collision (Game Over)
           if (checkCollision(activePiece.matrix, activePieceX, activePieceY)) {
             gameOver = true;
+            audio.playTetrisGameOver();
           }
         }
         drawTetris();
@@ -383,12 +393,14 @@ export const tetris = {
             e.preventDefault();
             if (!checkCollision(activePiece.matrix, activePieceX - 1, activePieceY)) {
               activePieceX--;
+              audio.playTetrisMove();
               drawTetris();
             }
           } else if (e.key === 'ArrowRight') {
             e.preventDefault();
             if (!checkCollision(activePiece.matrix, activePieceX + 1, activePieceY)) {
               activePieceX++;
+              audio.playTetrisMove();
               drawTetris();
             }
           } else if (e.key === 'ArrowDown') {
@@ -396,22 +408,28 @@ export const tetris = {
             if (!checkCollision(activePiece.matrix, activePieceX, activePieceY + 0.5)) {
               activePieceY += 0.5;
               score += 1; // Soft drop points
+              audio.playTetrisMove();
               drawTetris();
             }
           } else if (e.key === 'ArrowUp') {
             e.preventDefault();
             const rotated = rotatePiece(activePiece.matrix);
             // Standard rotation check, with offset check (basic wall kick)
+            let rotatedOk = false;
             if (!checkCollision(rotated, activePieceX, activePieceY)) {
               activePiece.matrix = rotated;
-              drawTetris();
+              rotatedOk = true;
             } else if (!checkCollision(rotated, activePieceX - 1, activePieceY)) {
               activePieceX--;
               activePiece.matrix = rotated;
-              drawTetris();
+              rotatedOk = true;
             } else if (!checkCollision(rotated, activePieceX + 1, activePieceY)) {
               activePieceX++;
               activePiece.matrix = rotated;
+              rotatedOk = true;
+            }
+            if (rotatedOk) {
+              audio.playTetrisRotate();
               drawTetris();
             }
           } else if (e.key === ' ') {
@@ -448,9 +466,11 @@ export const tetris = {
               }
               activePieceX = Math.floor((COLS - activePiece.matrix[0].length) / 2);
               activePieceY = 0;
+              audio.playTetrisRotate();
               // Check immediate spawn collision (Game Over)
               if (checkCollision(activePiece.matrix, activePieceX, activePieceY)) {
                 gameOver = true;
+                audio.playTetrisGameOver();
               }
               drawTetris();
             }

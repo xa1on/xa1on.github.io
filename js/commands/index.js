@@ -8,6 +8,7 @@ import { date } from './date.js';
 import { ping } from './ping.js';
 import { llm } from './llm.js';
 import { neofetch } from './neofetch.js';
+import { sound } from './sound.js';
 
 export const commands = {
   help,
@@ -19,5 +20,18 @@ export const commands = {
   date,
   ping,
   llm,
-  neofetch
+  neofetch,
+  sound,
+  mute: {
+    helpText: 'Mute all sounds.',
+    run: async (args, shell) => {
+      await sound.run(['off'], shell);
+    }
+  },
+  unmute: {
+    helpText: 'Unmute all sounds.',
+    run: async (args, shell) => {
+      await sound.run(['on'], shell);
+    }
+  }
 };

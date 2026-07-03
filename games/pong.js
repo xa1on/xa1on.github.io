@@ -1,3 +1,5 @@
+import { audio } from '../js/audio.js';
+
 export const pong = {
   helpText: 'Play a game of Pong (easy|medium|hard).',
   run: async (args, shell) => {
@@ -150,9 +152,11 @@ export const pong = {
         if (pongGame.ballY <= 0) {
           pongGame.ballY = 0;
           pongGame.ballDy = -pongGame.ballDy;
+          audio.playPongWall();
         } else if (pongGame.ballY >= pongGame.boardHeight - 1) {
           pongGame.ballY = pongGame.boardHeight - 1;
           pongGame.ballDy = -pongGame.ballDy;
+          audio.playPongWall();
         }
 
         // Left paddle collision
@@ -164,6 +168,7 @@ export const pong = {
             if (hitPos < 1.0) pongGame.ballDy = -0.4;
             else if (hitPos >= 2.0) pongGame.ballDy = 0.4;
             else pongGame.ballDy = (Math.random() > 0.5 ? 0.2 : -0.2);
+            audio.playPongHit();
           }
         }
 
@@ -176,6 +181,7 @@ export const pong = {
             if (hitPos < 1.0) pongGame.ballDy = -0.4;
             else if (hitPos >= 2.0) pongGame.ballDy = 0.4;
             else pongGame.ballDy = (Math.random() > 0.5 ? 0.2 : -0.2);
+            audio.playPongHit();
           }
         }
 
@@ -200,6 +206,7 @@ export const pong = {
           if (pongGame.cpuScore >= 5) {
             pongGame.gameOver = true;
           } else {
+            audio.playPongMiss();
             resetBall(1);
           }
         } else if (pongGame.ballX >= pongGame.boardWidth) {
@@ -207,6 +214,7 @@ export const pong = {
           if (pongGame.playerScore >= 5) {
             pongGame.gameOver = true;
           } else {
+            audio.playPongScore();
             resetBall(-1);
           }
         }
@@ -220,8 +228,10 @@ export const pong = {
     shell.loginState = 'LOGGED_IN';
 
     if (pongGame.playerScore >= 5) {
+      audio.playTetrisLevelUp(); // Use Level Up sound as a victory chime
       shell.print('Congratulations! You won the match!', 'color-green');
     } else if (pongGame.cpuScore >= 5) {
+      audio.playTetrisGameOver(); // Use Game Over sound as a loss chime
       shell.print('Game Over! The CPU won the match.', 'color-error');
     } else if (shell.abortSignal) {
       shell.print('Pong game interrupted.', 'color-dim');
