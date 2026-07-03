@@ -59,7 +59,7 @@ body {
 }
 
 /* ==========================================
-   CRT Scanline and Flicker Effects
+   CRT Scanline, Flicker, & Vignette Effects
    ========================================== */
 .scanlines {
   position: fixed;
@@ -100,6 +100,20 @@ body {
 .crt-overlay-overlay {
   mix-blend-mode: overlay;
   opacity: 0.4;
+}
+
+/* Light, hardware-accelerated vignette overlay */
+body::after {
+  content: " ";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, transparent 70%, rgba(0, 0, 0, 0.65) 100%);
+  pointer-events: none;
+  z-index: 1001;
+  transform: translate3d(0, 0, 0);
 }
 
 
