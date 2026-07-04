@@ -43,6 +43,8 @@ export class BaseEditor {
     this.textarea.spellcheck = false;
     this.textarea.autocomplete = 'off';
     this.textarea.value = this.content;
+    this.textarea.selectionStart = 0;
+    this.textarea.selectionEnd = 0;
 
     this.shell.body.appendChild(this.container);
     this.shell.body.appendChild(this.textarea);
@@ -67,57 +69,107 @@ export class BaseEditor {
     this.shell.focus();
   }
 
-  // Helper to split text by cursor and wrap active character
+  // Get raw lines, cursor indices, and offsets
   getLinesAndCursor() {
     const text = this.textarea.value;
     const selStart = this.textarea.selectionStart;
+    const selEnd = this.textarea.selectionEnd;
 
-    const lines = [];
+    const rawLines = text.split('\n');
     let curLine = 0;
     let curCol = 0;
 
+    // Find the cursor line and column based on selectionStart (active typing cursor)
     let currentIdx = 0;
-    const rawLines = text.split('\n');
-
     for (let i = 0; i < rawLines.length; i++) {
-      const lineStr = rawLines[i];
-      const lineStartIdx = currentIdx;
-      const lineEndIdx = currentIdx + lineStr.length; // excluding newline character
-
-      let html = '';
-      let isCursorOnThisLine = false;
-
-      if (selStart >= lineStartIdx && selStart <= lineEndIdx) {
-        isCursorOnThisLine = true;
+      const lineLen = rawLines[i].length;
+      if (selStart >= currentIdx && selStart <= currentIdx + lineLen) {
         curLine = i;
-        curCol = selStart - lineStartIdx;
-
-        const before = lineStr.slice(0, curCol);
-        const charAtCursor = lineStr.slice(curCol, curCol + 1) || ' ';
-        const after = lineStr.slice(curCol + 1);
-
-        const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        html = escape(before) + `<span class="terminal-cursor">${escape(charAtCursor)}</span>` + escape(after);
-      } else {
-        const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        html = escape(lineStr);
+        curCol = selStart - currentIdx;
+        break;
       }
-
-      lines.push({
-        text: lineStr,
-        html: html,
-        isCursor: isCursorOnThisLine
-      });
-
-      currentIdx = lineEndIdx + 1; // +1 for the newline character
+      currentIdx += lineLen + 1; // +1 for \n
     }
 
     return {
-      lines,
+      rawLines,
       curLine,
       curCol,
+      selStart,
+      selEnd,
       totalLines: rawLines.length,
       totalChars: text.length
     };
   }
+
+  // Escape a single line and inject selection and cursor highlights
+  escapeLine(lineStr, lineStartIdx, selStart, selEnd) {
+    const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const lineEndIdx = lineStartIdx + lineStr.length;
+
+    // Case 1: No selection (cursor only)
+    if (selStart === selEnd) {
+      if (selStart >= lineStartIdx && selStart <= lineEndIdx) {
+        const curCol = selStart - lineStartIdx;
+        const before = lineStr.slice(0, curCol);
+        const charAtCursor = lineStr.slice(curCol, curCol + 1) || ' ';
+        const after = lineStr.slice(curCol + 1);
+        return escape(before) + `<span class="terminal-cursor">${escape(charAtCursor)}</span>` + escape(after);
+      }
+      return escape(lineStr);
+    }
+
+    // Case 2: Selection exists
+    const s = Math.min(selStart, selEnd);
+    const e = Math.max(selStart, selEnd);
+
+    // Check if selection overlaps with this line
+    const overlapStart = Math.max(s, lineStartIdx);
+    const overlapEnd = Math.min(e, lineEndIdx);
+
+    if (overlapStart < overlapEnd) {
+      const relStart = overlapStart - lineStartIdx;
+      const relEnd = overlapEnd - lineStartIdx;
+
+      const before = lineStr.slice(0, relStart);
+      const selected = lineStr.slice(relStart, relEnd);
+      const after = lineStr.slice(relEnd);
+
+      // Render cursor at 'selStart' (active boundary in textareas)
+      if (selStart >= lineStartIdx && selStart <= lineEndIdx) {
+        const curCol = selStart - lineStartIdx;
+        if (curCol === relStart) {
+          const charAtCursor = selected.slice(0, 1) || ' ';
+          const rest = selected.slice(1);
+          return escape(before) + 
+                 `<span class="terminal-cursor">${escape(charAtCursor)}</span>` + 
+                 `<span class="terminal-selection">${escape(rest)}</span>` + 
+                 escape(after);
+        } else if (curCol === relEnd) {
+          const charAtCursor = after.slice(0, 1) || ' ';
+          const rest = after.slice(1);
+          return escape(before) + 
+                 `<span class="terminal-selection">${escape(selected)}</span>` + 
+                 `<span class="terminal-cursor">${escape(charAtCursor)}</span>` + 
+                 escape(rest);
+        }
+      }
+
+      return escape(before) + `<span class="terminal-selection">${escape(selected)}</span>` + escape(after);
+    } else {
+      // Selection doesn't overlap line text.
+      // If the active cursor is at the start of the line, render it.
+      if (selStart === lineStartIdx && selStart >= lineStartIdx && selStart <= lineEndIdx) {
+        const charAtCursor = lineStr.slice(0, 1) || ' ';
+        const rest = lineStr.slice(1);
+        return `<span class="terminal-cursor">${escape(charAtCursor)}</span>` + escape(rest);
+      }
+      // If the active cursor is at the end of the line, render it.
+      if (selStart === lineEndIdx && selStart >= lineStartIdx && selStart <= lineEndIdx) {
+        return escape(lineStr) + `<span class="terminal-cursor"> </span>`;
+      }
+      return escape(lineStr);
+    }
+  }
 }
+

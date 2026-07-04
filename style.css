@@ -569,3 +569,8 @@ body::after {
   display: inline;
   padding: 0 1px;
 }
+
+.terminal-editor .terminal-selection {
+  background-color: rgba(255, 255, 255, 0.25);
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.4);
+}
