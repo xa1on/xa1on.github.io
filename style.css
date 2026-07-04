@@ -420,6 +420,7 @@ body::after {
   flex-direction: column;
   height: 100%;
   width: 100%;
+  min-height: 0;
   font-family: inherit;
   line-height: 1.2;
   overflow: hidden;
@@ -439,7 +440,8 @@ body::after {
 
 .nano-content {
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
+  min-height: 0;
   padding: 5px 10px;
   display: flex;
   flex-direction: column;
@@ -512,7 +514,8 @@ body::after {
 /* Vim Custom Styles */
 .vim-content {
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
+  min-height: 0;
   padding: 5px 10px;
   display: flex;
   flex-direction: column;

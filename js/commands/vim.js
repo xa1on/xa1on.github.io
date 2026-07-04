@@ -94,6 +94,9 @@ class VimEditor extends BaseEditor {
     this.initDOM('vim-editor');
     this.draw();
 
+    // Trigger measurement redraw after DOM has settled
+    setTimeout(() => this.draw(), 0);
+
     this.textarea.addEventListener('input', () => {
       this.draw();
     });
@@ -266,11 +269,29 @@ class VimEditor extends BaseEditor {
     const currentVal = this.textarea.value;
     this.isModified = currentVal !== this.content;
 
+    // Detect height dynamically
+    let maxVisibleLines = this.lastMaxVisibleLines || 24;
+    const contentEl = this.container ? this.container.querySelector('.vim-content') : null;
+    if (contentEl) {
+      const rect = contentEl.getBoundingClientRect();
+      const testLine = contentEl.querySelector('.vim-line');
+      const lineHeight = testLine ? testLine.getBoundingClientRect().height : 19;
+      if (rect.height > 0 && lineHeight > 0) {
+        const calculated = Math.floor((rect.height - 10) / (lineHeight + 1));
+        if (calculated > 0 && calculated !== this.lastMaxVisibleLines) {
+          this.lastMaxVisibleLines = calculated;
+          setTimeout(() => this.draw(), 0);
+          return;
+        }
+      }
+    }
+
     let html = '<div class="vim-content">';
 
-    // Vim line viewport rendering (max 20 lines)
-    const maxVisibleLines = 20;
-    const startLine = Math.max(0, curLine - Math.floor(maxVisibleLines / 2));
+    let startLine = Math.max(0, curLine - Math.floor(maxVisibleLines / 2));
+    if (startLine + maxVisibleLines > totalLines) {
+      startLine = Math.max(0, totalLines - maxVisibleLines);
+    }
     const endLine = Math.min(totalLines, startLine + maxVisibleLines);
 
     for (let i = startLine; i < endLine; i++) {

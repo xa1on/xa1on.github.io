@@ -18,14 +18,17 @@ export class BaseEditor {
     // Hide terminal output & input line
     this.shell.output.style.display = 'none';
     this.shell.inputLine.style.display = 'none';
+    
+    // Prevent terminal body from scrolling
+    this.shell.body.style.overflowY = 'hidden';
 
     // Create editor container
     this.container = document.createElement('div');
     this.container.className = `terminal-editor ${editorClassName}`;
     this.container.style.display = 'flex';
     this.container.style.flexDirection = 'column';
-    this.container.style.height = '100%';
     this.container.style.width = '100%';
+    this.container.style.height = '100%';
 
     // Create hidden textarea
     this.textarea = document.createElement('textarea');
@@ -58,6 +61,7 @@ export class BaseEditor {
 
     this.shell.output.style.display = 'flex';
     this.shell.inputLine.style.display = 'flex';
+    this.shell.body.style.overflowY = '';
     this.shell.loginState = this.originalState;
     this.shell.updatePrompt();
     this.shell.focus();

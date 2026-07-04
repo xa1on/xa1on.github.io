@@ -91,6 +91,9 @@ class NanoEditor extends BaseEditor {
     this.initDOM('nano-editor');
     this.draw();
 
+    // Trigger measurement redraw after DOM has settled
+    setTimeout(() => this.draw(), 0);
+
     this.textarea.addEventListener('input', () => {
       this.draw();
     });
@@ -328,6 +331,23 @@ class NanoEditor extends BaseEditor {
     const currentVal = this.textarea.value;
     this.isModified = currentVal !== this.content;
 
+    // Detect height dynamically
+    let maxVisibleLines = this.lastMaxVisibleLines || 20;
+    const contentEl = this.container ? this.container.querySelector('.nano-content') : null;
+    if (contentEl) {
+      const rect = contentEl.getBoundingClientRect();
+      const testLine = contentEl.querySelector('.nano-line');
+      const lineHeight = testLine ? testLine.getBoundingClientRect().height : 19;
+      if (rect.height > 0 && lineHeight > 0) {
+        const calculated = Math.floor((rect.height - 10) / (lineHeight + 1));
+        if (calculated > 0 && calculated !== this.lastMaxVisibleLines) {
+          this.lastMaxVisibleLines = calculated;
+          setTimeout(() => this.draw(), 0);
+          return;
+        }
+      }
+    }
+
     const modifiedText = this.isModified ? 'Modified' : '';
     let html = `
       <div class="nano-header">
@@ -339,9 +359,10 @@ class NanoEditor extends BaseEditor {
 
     html += '<div class="nano-content">';
 
-    // Display window constraints
-    const maxVisibleLines = 18;
-    const startLine = Math.max(0, curLine - Math.floor(maxVisibleLines / 2));
+    let startLine = Math.max(0, curLine - Math.floor(maxVisibleLines / 2));
+    if (startLine + maxVisibleLines > totalLines) {
+      startLine = Math.max(0, totalLines - maxVisibleLines);
+    }
     const endLine = Math.min(totalLines, startLine + maxVisibleLines);
 
     for (let i = startLine; i < endLine; i++) {
