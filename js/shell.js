@@ -155,10 +155,10 @@ export class Shell {
       const target = e.target;
       if (!target) return;
 
-      const isInteractive = target.tagName === 'A' || 
-                            target.classList.contains('ls-item') || 
-                            target.classList.contains('cmd-link') || 
-                            target.tagName === 'BUTTON';
+      const isInteractive = target.tagName === 'A' ||
+        target.classList.contains('ls-item') ||
+        target.classList.contains('cmd-link') ||
+        target.tagName === 'BUTTON';
 
       if (isInteractive) {
         audio.playLinkClick();
@@ -581,6 +581,34 @@ export class Shell {
   printMOTD() {
     const now = new Date();
     const currentTimestamp = now.toString();
+    const asciiArt = `<span class="color-dim red">
+
+       ░░░░    ░  ░░ ░░░░   ░░░                ░░                             </span><span class="red">
+      ░░░     ░  ░░░░░                    ░         ░░                        
+     ░░░ ░   ▒  ▒  ▒▒                               ░  ░                      
+    ▒▒▒▒       ▒▒▒▒                   </span>▓█</span><span class="red">          ▒                           
+    ▒▒▒  ▒          ▒▒               </span>█  █</span><span class="red">               ▒                     
+   ▒ ▒ ▒▒▒▒        ▒▒               </span>█    █</span><span class="red">        ▒                           
+   ▒▒▒  ▒          ▒            </span>   █ ▒▒▒  ██</span><span class="red">▒             ▒  ▒                
+  ▒ ▒ ▒  ▒  ▒▒  ▒▒    ▒   ▒</span>█<span class="red">█ ▒</span> ▒ ▀▀▀▀▀▀▀▀▀█▀▀▀▀▀▀▀▀▀▀▀</span><span class="red">                       
+  ▒ ▒            ▒       ██ ▒ ▒</span>██     ▓█ ▒▒ █ ▒     ▒</span><span class="red">                         
+  ▒▒▒            ▒  ▒   █ ▒  </span>█<span class="red">█</span>██     ██▒█   ████▒ █</span><span class="red">                          
+   ▒▒   ▒          ▒ ▒ </span>█<span class="red">▒ ▒▒▒</span>  ▒   █     █     ██████</span><span class="red">        ▒          </span> | <span class="blue">arch</span>4ic</span><span class="red">
+  ▒▒▒   ▒      ▒▒    ▒</span>█▒<span class="red">  █▒</span> ▒█  ▒ █      ██▒  ██ ████</span><span class="red">▒                       
+  ▒▒▒   ▒       ▒▒    ██ ▒</span> █ █ █   ▒█▓  <span class="red">▒</span>██ ███▒█ █  <span class="red">▒</span> █</span><span class="red">                      
+  ▒ ▒           ▒▒      </span>█ ▒ <span class="red">█</span>█ <span class="red">▒</span>    █ █     █  <span class="red">▒</span> █    <span class="red">▒</span>█</span><span class="red">                      
+  ▒ ▒ ▒▒▒▒      ▒▒    ▒▒ </span>█<span class="red">█▒</span>█ ▄▄▄▄▄▒▒▄▄▒▄▄▓▒▒▒▄▄▄▄<span class="red">▒</span>███<span class="red">▒                       
+    ▒▒  ▒       ▒▒ ▒      </span>█   <span class="red">▒</span>█ ▒ ▒▒██████   ██   █<span class="red">   ▒  ▒          ▒  ▒     
+   ▒ ▒ ▒▒▒▒▒   ▒  ▒▒▒    </span>█    █                █ <span class="red">▒</span>  █<span class="red">     ▒        ▒▒▒  ▒     
+    ▒▒▒  ▒ ▒      ▒▒▒▒  </span>█    █              ▒<span class="red">   █▒  ▒</span>█<span class="red">  ▒▒          ▒  ▒      
+    ▒ ▒▒    ▒          </span>█▄▄▄▄█               ▒    █▄▄▄▄█<span class="red">               ▒▒      
+     ░ ░ ░   ░   ▒    ▒                                         ░     ░       
+      ░ ░     ░         ░                                      ░     ░ ░      </span><span class="color-dim red">
+       ░ ░░    ░            ░░░                ░░░           ░░    ░░ ░       </span>
+
+`;
+
+    /*
     const asciiArt = `
                                        
                      @                 
@@ -601,7 +629,7 @@ export class Shell {
       <span class="red">######</span>                   @@@@@@  
      <span class="red">######</span>                     @@@@@@ 
                                        
-    `;
+    `;*/
 
     this.print(`Arch Linux 6.9.3-arch1-1 (tty1)`, 'color-dim');
     this.print(`\n  >>> <span class="blue">Welcome, root@chenghao.li!</span> <<<`, 'color-accent');
