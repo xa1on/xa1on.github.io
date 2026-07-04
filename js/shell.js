@@ -1,6 +1,7 @@
 import { resolvePath, getNodeByPath } from './fs.js';
 import { audio } from './audio.js';
 import { parseMarkdown, escapeHTML } from './utils/markdown.js';
+import { buddies } from './buddies.js';
 
 export class Shell {
   constructor(options = {}) {
@@ -638,6 +639,7 @@ export class Shell {
     this.print(`Arch Linux 6.9.3-arch1-1 (tty1)`, 'color-dim');
     this.print(`\n  >>> <span class="blue">Welcome, root@chenghao.li!</span> <<<`, 'color-accent');
     this.print(asciiArt, 'color-accent');
+    this.printBuddyBox();
     this.print(`
 System information at ${currentTimestamp}:
   System load:  0.15               Processes:             108
@@ -645,5 +647,34 @@ System information at ${currentTimestamp}:
   Memory usage: 12%                IPv4 address for eth0: 192.168.1.104
 `, 'color-dim');
     this.print(` `);
+  }
+
+  printBuddyBox() {
+    if (!buddies || buddies.length === 0) return;
+
+    const buddiesPerRow = 5;
+    const rows = [];
+    for (let i = 0; i < buddies.length; i += buddiesPerRow) {
+      rows.push(buddies.slice(i, i + buddiesPerRow));
+    }
+
+    let rowsHTML = '';
+    rows.forEach(row => {
+      let rowContentHTML = '';
+      row.forEach(filename => {
+        const nameWithoutExt = filename.replace(/\.[^/.]+$/, "");
+        const url = nameWithoutExt.startsWith('http://') || nameWithoutExt.startsWith('https://')
+          ? nameWithoutExt
+          : `https://${nameWithoutExt}`;
+
+        rowContentHTML += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="buddy-link" title="${nameWithoutExt}"><img src="assets/images/buddies/${filename}" alt="${nameWithoutExt}" class="buddy-img" onerror="this.parentNode.style.display='none'"></a>`;
+      });
+
+      rowsHTML += `<div class="buddy-box-row"><span class="buddy-border">║</span><div class="buddy-row-content">${rowContentHTML}</div><span class="buddy-border">║</span></div>`;
+    });
+
+    const boxHTML = `<div class="buddy-box"><div class="buddy-box-header">╔══════════════════════════════════════════════════════════════╗</div>${rowsHTML}<div class="buddy-box-footer">╚══════════════════════════════════════════════════════════════╝</div></div>`;
+
+    this.print(boxHTML, 'color-text');
   }
 }

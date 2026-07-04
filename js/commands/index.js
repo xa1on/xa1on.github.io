@@ -16,6 +16,7 @@ import { nano } from './nano.js';
 import { vim } from './vim.js';
 import { mute } from './mute.js';
 import { unmute } from './unmute.js';
+import { buddies } from './buddies.js';
 import { pong } from '../../games/pong.js';
 import { tetris } from '../../games/tetris.js';
 import { snake } from '../../games/snake.js';
@@ -42,6 +43,7 @@ export const commands = {
   vim,
   mute,
   unmute,
+  buddies,
   pong,
   tetris,
   snake,

@@ -639,3 +639,91 @@ body::after {
   white-space: nowrap;
   letter-spacing: 1px;
 }
+
+/* ==========================================
+   Buddy Box ASCII Double-line Styling
+   ========================================== */
+.buddy-box {
+  display: flex;
+  flex-direction: column;
+  width: fit-content;
+  max-width: 100%;
+  margin: 15px 0 15px 7ch;
+  font-family: 'Fira Code', 'Courier New', Courier, monospace;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.buddy-box-header,
+.buddy-box-footer,
+.buddy-box-divider {
+  color: var(--dim-color);
+  line-height: 1;
+}
+
+.buddy-box-title-row,
+.buddy-box-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 35px;
+  /* Fits 31px high images comfortably */
+  line-height: 1;
+}
+
+.buddy-box-title-row {
+  height: 24px;
+}
+
+.buddy-border {
+  color: var(--dim-color);
+}
+
+.buddy-title {
+  flex-grow: 1;
+  padding: 0 2ch;
+  color: var(--accent-color);
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.buddy-row-content {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  flex-grow: 1;
+  padding: 0 2ch;
+  height: 100%;
+}
+
+.buddy-link {
+  display: inline-block;
+  width: 88px;
+  height: 31px;
+  line-height: 0;
+  transition: transform 0.2s ease;
+}
+
+.buddy-link:hover {
+  transform: translateY(-2px);
+}
+
+.buddy-img {
+  width: 88px;
+  height: 31px;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  outline: 1px solid rgba(255, 255, 255, 0.2);
+  outline-offset: -1px;
+  border-radius: 2px;
+  transition: outline-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.buddy-link:hover .buddy-img {
+  outline-color: var(--link-color);
+  box-shadow: 0 0 8px rgb(from var(--link-color) r g b / 0.5);
+}
