@@ -1,154 +1,40 @@
-import { BaseEditor } from '../utils/editor.js';
+import { BaseEditor, runEditor } from '../utils/editor.js';
 import { audio } from '../audio.js';
 
 export const vim = {
   helpText: 'Edit a file using Vim.',
   run: async (args, shell) => {
-    if (args.length === 0) {
-      shell.print('vim: missing filename operand. Usage: vim [filename]', 'color-error');
-      return;
-    }
-
-    let fileArg = args[0].trim();
-    while (fileArg.endsWith('/') && fileArg.length > 1) {
-      fileArg = fileArg.slice(0, -1);
-    }
-    let resolved = shell.fileSystem.resolvePath(shell.currentPath, fileArg);
-    let initialContent = '';
-    let isNewFile = false;
-
-    if (resolved === null) {
-      // Resolve parent path for potential new file
-      let parentPathStr = '';
-      let name = fileArg;
-      const lastSlash = fileArg.lastIndexOf('/');
-      if (lastSlash !== -1) {
-        parentPathStr = fileArg.slice(0, lastSlash);
-        name = fileArg.slice(lastSlash + 1);
-        if (parentPathStr === '') {
-          parentPathStr = '/';
-        }
-      }
-
-      const resolvedParent = shell.fileSystem.resolvePath(shell.currentPath, parentPathStr);
-      if (resolvedParent === null) {
-        shell.print(`vim: cannot open '${fileArg}': No such file or directory`, 'color-error');
-        return;
-      }
-      resolved = [...resolvedParent, name];
-      isNewFile = true;
-    } else {
-      const node = shell.fileSystem.getNodeByPath(resolved);
-      if (node && typeof node === 'object') {
-        shell.print(`vim: '${fileArg}' is a directory`, 'color-error');
-        return;
-      }
-      try {
-        initialContent = await shell.fileSystem.readFile(resolved);
-      } catch (err) {
-        shell.print(`vim: error reading '${fileArg}': ${err.message}`, 'color-error');
-        return;
-      }
-    }
-
-    return new Promise((resolve) => {
-      const onSave = (content) => {
-        try {
-          shell.fileSystem.writeFile(resolved, content);
-          return true;
-        } catch (err) {
-          return err.message;
-        }
-      };
-
-      const onExit = () => {
-        resolve();
-      };
-
-      const editor = new VimEditor(shell, fileArg, initialContent, resolved, onSave, onExit, isNewFile);
-      editor.start();
-    });
+    return runEditor(VimEditor, args, 'vim', shell);
   }
 };
 
 class VimEditor extends BaseEditor {
+  static yankBuffer = '';
+  static isLineYank = false;
+
   constructor(shell, filename, initialContent, resolvedPath, onSave, onExit, isNewFile) {
-    super(shell, filename, initialContent, onSave, onExit);
-    this.resolvedPath = resolvedPath;
-    this.isNewFile = isNewFile;
+    super(shell, filename, initialContent, resolvedPath, onSave, onExit, isNewFile);
 
     // Modes: 'NORMAL', 'INSERT', 'COMMAND_LINE'
     this.mode = 'NORMAL';
     this.commandText = '';
     this.statusMessage = isNewFile ? `"${filename}" [New File]` : `"${filename}"`;
     this.statusTimeout = null;
-    this.scrollTopLine = 0;
     this.undoStack = [];
     this.textBeforeInsert = null;
     this.lastKeyPressed = '';
-
-    this.lastSelectionStart = null;
-    this.lastSelectionEnd = null;
-
-    this.selectionHandler = () => {
-      if (document.activeElement === this.textarea) {
-        const selStart = this.textarea.selectionStart;
-        const selEnd = this.textarea.selectionEnd;
-        if (selStart !== this.lastSelectionStart || selEnd !== this.lastSelectionEnd) {
-          this.lastSelectionStart = selStart;
-          this.lastSelectionEnd = selEnd;
-          this.draw();
-        }
-      }
-    };
+    this.isWaitingForReplaceChar = false;
+    this.searchQuery = '';
   }
 
   start() {
     this.initDOM('vim-editor');
-    this.measureLayout();
-    this.draw();
-
-    this.textarea.addEventListener('input', () => {
-      this.draw();
-    });
-
-    this.textarea.addEventListener('keydown', (e) => {
-      this.handleKeydown(e);
-    });
-
-    document.addEventListener('selectionchange', this.selectionHandler);
-
-    this.resizeObserver = new ResizeObserver(() => {
-      this.measureLayout();
-      this.draw();
-    });
-    this.resizeObserver.observe(this.container);
+    super.start('.vim-content', '.vim-line', '<span class="vim-lnum">  1</span><span>&nbsp;</span>');
   }
 
-  measureLayout() {
-    const contentEl = this.container ? this.container.querySelector('.vim-content') : null;
-    if (contentEl) {
-      const rect = contentEl.getBoundingClientRect();
-      let testLine = contentEl.querySelector('.vim-line');
-      let createdTestLine = false;
-      if (!testLine) {
-        testLine = document.createElement('div');
-        testLine.className = 'vim-line';
-        testLine.innerHTML = '<span class="vim-lnum">  1</span><span>&nbsp;</span>';
-        contentEl.appendChild(testLine);
-        createdTestLine = true;
-      }
-      const lineHeight = testLine.getBoundingClientRect().height;
-      if (createdTestLine) {
-        testLine.remove();
-      }
-      if (rect.height > 0 && lineHeight > 0) {
-        this.maxVisibleLines = Math.floor((rect.height - 10) / (lineHeight + 1));
-      }
-    }
-    if (!this.maxVisibleLines || this.maxVisibleLines <= 0) {
-      this.maxVisibleLines = 24;
-    }
+  cleanup() {
+    super.cleanup();
+    if (this.statusTimeout) clearTimeout(this.statusTimeout);
   }
 
   showStatus(msg) {
@@ -189,12 +75,102 @@ class VimEditor extends BaseEditor {
       const targetCol = Math.min(curCol, maxCol);
       let newIdx = 0;
       for (let i = 0; i < targetLine; i++) {
-        newIdx += rawLines[i].length + 1; // +1 for \n
+        newIdx += rawLines[i].length + 1;
       }
       newIdx += targetCol;
       this.textarea.selectionStart = newIdx;
       this.textarea.selectionEnd = newIdx;
     }
+  }
+
+  moveWord(dir) {
+    const val = this.textarea.value;
+    let idx = this.textarea.selectionStart;
+    
+    const isAlphanumeric = (c) => /[a-zA-Z0-9_]/.test(c);
+    const isWhitespace = (c) => /\s/.test(c);
+    
+    if (dir === 1) { // w
+      if (idx >= val.length) return;
+      const startClass = isAlphanumeric(val[idx]) ? 1 : (isWhitespace(val[idx]) ? 0 : 2);
+      
+      if (startClass !== 0) {
+        while (idx < val.length) {
+          const curClass = isAlphanumeric(val[idx]) ? 1 : (isWhitespace(val[idx]) ? 0 : 2);
+          if (curClass !== startClass) break;
+          idx++;
+        }
+      }
+      while (idx < val.length && isWhitespace(val[idx])) {
+        idx++;
+      }
+    } else { // b
+      if (idx <= 0) return;
+      idx--;
+      while (idx > 0 && isWhitespace(val[idx])) {
+        idx--;
+      }
+      const targetClass = isAlphanumeric(val[idx]) ? 1 : (isWhitespace(val[idx]) ? 0 : 2);
+      while (idx > 0) {
+        const prevChar = val[idx - 1];
+        const prevClass = isAlphanumeric(prevChar) ? 1 : (isWhitespace(prevChar) ? 0 : 2);
+        if (prevClass !== targetClass) break;
+        idx--;
+      }
+    }
+    
+    this.textarea.selectionStart = this.textarea.selectionEnd = idx;
+  }
+
+  async writeToClipboard(text, isLine) {
+    VimEditor.yankBuffer = text;
+    VimEditor.isLineYank = isLine;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      }
+    } catch (err) {
+      // Fall back to internal buffer quietly
+    }
+  }
+
+  async handlePut(key) {
+    let clipText = VimEditor.yankBuffer;
+    let isLine = VimEditor.isLineYank;
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const systemText = await navigator.clipboard.readText();
+        if (systemText) {
+          clipText = systemText;
+          isLine = systemText.endsWith('\n');
+        }
+      }
+    } catch (err) {
+      // Fall back to internal buffer quietly
+    }
+
+    if (!clipText) return;
+
+    this.pushUndoState();
+    const val = this.textarea.value;
+    const selStart = this.textarea.selectionStart;
+
+    if (isLine) {
+      const { rawLines, curLine } = this.getLinesAndCursor();
+      const insertLine = key === 'p' ? curLine + 1 : curLine;
+      let insertIdx = 0;
+      for (let i = 0; i < insertLine && i < rawLines.length; i++) {
+        insertIdx += rawLines[i].length + 1;
+      }
+      this.textarea.value = val.slice(0, insertIdx) + clipText + val.slice(insertIdx);
+      this.textarea.selectionStart = this.textarea.selectionEnd = insertIdx;
+    } else {
+      const insertIdx = key === 'p' ? selStart + 1 : selStart;
+      this.textarea.value = val.slice(0, insertIdx) + clipText + val.slice(insertIdx);
+      this.textarea.selectionStart = this.textarea.selectionEnd = insertIdx + clipText.length;
+    }
+    this.draw();
   }
 
   pushUndoState() {
@@ -208,19 +184,6 @@ class VimEditor extends BaseEditor {
     }
   }
 
-  adjustScroll(curLine) {
-    const maxVisibleLines = this.maxVisibleLines || 24;
-    const { totalLines } = this.getLinesAndCursor();
-    if (curLine < this.scrollTopLine) {
-      this.scrollTopLine = curLine;
-    } else if (curLine >= this.scrollTopLine + maxVisibleLines) {
-      this.scrollTopLine = curLine - maxVisibleLines + 1;
-    }
-    if (this.scrollTopLine + maxVisibleLines > totalLines) {
-      this.scrollTopLine = Math.max(0, totalLines - maxVisibleLines);
-    }
-  }
-
   handleKeydown(e) {
     const ignoredKeys = ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'];
     if (!ignoredKeys.includes(e.key) && !e.repeat) {
@@ -229,7 +192,30 @@ class VimEditor extends BaseEditor {
 
     if (this.mode === 'NORMAL') {
       e.preventDefault();
+
+      if (this.isWaitingForReplaceChar) {
+        this.isWaitingForReplaceChar = false;
+        if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+          this.pushUndoState();
+          const val = this.textarea.value;
+          const idx = this.textarea.selectionStart;
+          if (idx < val.length && val[idx] !== '\n') {
+            this.textarea.value = val.slice(0, idx) + e.key + val.slice(idx + 1);
+            this.textarea.selectionStart = this.textarea.selectionEnd = idx;
+            this.draw();
+          }
+        }
+        return;
+      }
+
       const key = e.key;
+      const lowerKey = key.toLowerCase();
+
+      if (key === 'Escape') {
+        this.searchQuery = '';
+        this.draw();
+        return;
+      }
 
       if (key === 'i' || key === 'I') {
         this.textBeforeInsert = this.textarea.value;
@@ -270,8 +256,14 @@ class VimEditor extends BaseEditor {
         return;
       }
 
+      if (key === '/') {
+        this.mode = 'COMMAND_LINE';
+        this.commandText = '/';
+        this.draw();
+        return;
+      }
+
       // Cursor movement
-      const lowerKey = key.toLowerCase();
       if (key === 'ArrowLeft' || lowerKey === 'h') {
         this.moveCursor(-1);
       } else if (key === 'ArrowRight' || lowerKey === 'l') {
@@ -295,6 +287,10 @@ class VimEditor extends BaseEditor {
         }
         idx += Math.max(0, rawLines[curLine].length - 1);
         this.textarea.selectionStart = this.textarea.selectionEnd = idx;
+      } else if (key === 'w') {
+        this.moveWord(1);
+      } else if (key === 'b') {
+        this.moveWord(-1);
       } else if (key === 'g') {
         if (this.lastKeyPressed === 'g') {
           this.textarea.selectionStart = this.textarea.selectionEnd = 0;
@@ -342,6 +338,48 @@ class VimEditor extends BaseEditor {
           this.lastKeyPressed = 'd';
           return;
         }
+      } else if (key === 'y') {
+        const selStart = this.textarea.selectionStart;
+        const selEnd = this.textarea.selectionEnd;
+        if (selStart !== selEnd) {
+          const yankedText = this.textarea.value.slice(Math.min(selStart, selEnd), Math.max(selStart, selEnd));
+          this.writeToClipboard(yankedText, false);
+          this.showStatus(`${yankedText.length} characters yanked`);
+          this.lastKeyPressed = '';
+        } else if (this.lastKeyPressed === 'y') {
+          const { rawLines, curLine } = this.getLinesAndCursor();
+          const yankedText = rawLines[curLine] + '\n';
+          this.writeToClipboard(yankedText, true);
+          this.showStatus('1 line yanked');
+          this.lastKeyPressed = '';
+        } else {
+          this.lastKeyPressed = 'y';
+          return;
+        }
+      } else if (key === 'p' || key === 'P') {
+        this.handlePut(key);
+      } else if (key === 'r') {
+        this.isWaitingForReplaceChar = true;
+        return;
+      } else if (key === 'D' || key === 'C') {
+        this.pushUndoState();
+        const val = this.textarea.value;
+        const selStart = this.textarea.selectionStart;
+        const { rawLines, curLine, curCol } = this.getLinesAndCursor();
+        const lineLen = rawLines[curLine] ? rawLines[curLine].length : 0;
+        const charsToDelete = lineLen - curCol;
+        
+        this.textarea.value = val.slice(0, selStart) + val.slice(selStart + charsToDelete);
+        this.textarea.selectionStart = this.textarea.selectionEnd = selStart;
+        
+        if (key === 'C') {
+          this.mode = 'INSERT';
+          this.textBeforeInsert = this.textarea.value;
+        } else {
+          if (selStart > 0 && this.textarea.value[selStart] === '\n') {
+            this.textarea.selectionStart = this.textarea.selectionEnd = selStart - 1;
+          }
+        }
       } else if (lowerKey === 'o') {
         this.pushUndoState();
         const { rawLines, curLine } = this.getLinesAndCursor();
@@ -374,7 +412,7 @@ class VimEditor extends BaseEditor {
         }
       }
 
-      if (key !== 'g' && key !== 'd') {
+      if (key !== 'g' && key !== 'd' && key !== 'y') {
         this.lastKeyPressed = '';
       }
 
@@ -395,7 +433,7 @@ class VimEditor extends BaseEditor {
         this.textBeforeInsert = null;
         this.mode = 'NORMAL';
         
-        const { rawLines, curLine, curCol } = this.getLinesAndCursor();
+        const { curCol } = this.getLinesAndCursor();
         if (curCol > 0) {
           this.moveCursor(-1);
         }
@@ -424,8 +462,13 @@ class VimEditor extends BaseEditor {
       }
 
       if (e.key === 'Enter') {
-        const cmd = this.commandText.slice(1).trim(); // Strip ':'
-        this.executeVimCommand(cmd);
+        const type = this.commandText[0];
+        const cmd = this.commandText.slice(1);
+        if (type === ':') {
+          this.executeVimCommand(cmd.trim());
+        } else if (type === '/') {
+          this.executeVimSearch(cmd);
+        }
         return;
       }
 
@@ -474,13 +517,22 @@ class VimEditor extends BaseEditor {
     }
   }
 
-  cleanup() {
-    super.cleanup();
-    document.removeEventListener('selectionchange', this.selectionHandler);
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect();
+  executeVimSearch(text) {
+    this.mode = 'NORMAL';
+    this.commandText = '';
+    this.searchQuery = text;
+    if (text) {
+      const val = this.textarea.value;
+      const start = val.toLowerCase().indexOf(text.toLowerCase(), this.textarea.selectionStart + 1);
+      const idx = start !== -1 ? start : val.toLowerCase().indexOf(text.toLowerCase());
+      if (idx !== -1) {
+        this.textarea.selectionStart = this.textarea.selectionEnd = idx;
+        this.showStatus(`Search: /${text}`);
+      } else {
+        this.showStatus(`Pattern not found: ${text}`);
+      }
     }
-    if (this.statusTimeout) clearTimeout(this.statusTimeout);
+    this.draw();
   }
 
   draw() {
@@ -489,6 +541,12 @@ class VimEditor extends BaseEditor {
     this.isModified = currentVal !== this.content;
 
     this.adjustScroll(curLine);
+
+    if (this.mode === 'INSERT') {
+      this.container.classList.add('vim-insert-mode');
+    } else {
+      this.container.classList.remove('vim-insert-mode');
+    }
 
     let contentEl = this.container.querySelector('.vim-content');
     let footerEl = this.container.querySelector('.vim-footer');
@@ -515,7 +573,10 @@ class VimEditor extends BaseEditor {
     for (let i = startLine; i < endLine; i++) {
       const lineText = rawLines[i];
       const lineNum = String(i + 1).padStart(3, ' ');
-      const escaped = this.escapeLine(lineText, currentIdx, selStart, selEnd);
+      let escaped = this.escapeLine(lineText, currentIdx, selStart, selEnd);
+      if (this.searchQuery) {
+        escaped = highlightSearchMatches(escaped, this.searchQuery);
+      }
       html += `<div class="vim-line"><span class="vim-lnum">${lineNum}</span>${escaped}</div>`;
       currentIdx += lineText.length + 1;
     }
@@ -550,13 +611,50 @@ class VimEditor extends BaseEditor {
       bottomText = this.statusMessage;
     }
 
-    footerEl.innerHTML = `
-      <div class="vim-status-bar">
-        <div class="vim-status-left">${fileText}</div>
-        <div class="vim-status-right">${cursorText}</div>
-      </div>
-      <div class="vim-command-line">${bottomText}</div>
-    `;
+    let statusBarEl = footerEl.querySelector('.vim-status-bar');
+    let commandLineEl = footerEl.querySelector('.vim-command-line');
+    if (!statusBarEl || !commandLineEl) {
+      footerEl.innerHTML = `
+        <div class="vim-status-bar">
+          <div class="vim-status-left"></div>
+          <div class="vim-status-right"></div>
+        </div>
+        <div class="vim-command-line"></div>
+      `;
+      statusBarEl = footerEl.querySelector('.vim-status-bar');
+      commandLineEl = footerEl.querySelector('.vim-command-line');
+    }
+
+    const statusLeftEl = statusBarEl.querySelector('.vim-status-left');
+    const statusRightEl = statusBarEl.querySelector('.vim-status-right');
+    
+    if (statusLeftEl && statusLeftEl.innerHTML !== fileText) {
+      statusLeftEl.innerHTML = fileText;
+    }
+    if (statusRightEl && statusRightEl.innerHTML !== cursorText) {
+      statusRightEl.innerHTML = cursorText;
+    }
+    if (commandLineEl && commandLineEl.innerHTML !== bottomText) {
+      commandLineEl.innerHTML = bottomText;
+    }
   }
 }
 
+function highlightSearchMatches(htmlStr, query) {
+  if (!query) return htmlStr;
+  
+  const htmlEscapedQuery = query
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  const regexEscaped = htmlEscapedQuery.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+  const regex = new RegExp(regexEscaped, 'gi');
+  
+  const parts = htmlStr.split(/(<[^>]+>)/g);
+  for (let i = 0; i < parts.length; i += 2) {
+    if (parts[i]) {
+      parts[i] = parts[i].replace(regex, (match) => `<span class="vim-search-match">${match}</span>`);
+    }
+  }
+  return parts.join('');
+}

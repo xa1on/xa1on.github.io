@@ -1,17 +1,37 @@
 export class BaseEditor {
-  constructor(shell, filename, initialContent, onSave, onExit) {
+  constructor(shell, filename, initialContent, resolvedPath, onSave, onExit, isNewFile = false) {
     this.shell = shell;
     this.filename = filename;
     this.content = initialContent;
+    this.resolvedPath = resolvedPath;
     this.onSave = onSave;
     this.onExit = onExit;
+    this.isNewFile = isNewFile;
     this.isModified = false;
 
     this.container = null;
     this.textarea = null;
+    this.maxVisibleLines = null;
+    this.scrollTopLine = 0;
 
     this.originalState = this.shell.loginState;
     this.shell.loginState = 'GAME'; // Bypass shell typing listener
+
+    this.resizeObserver = null;
+    this.lastSelectionStart = null;
+    this.lastSelectionEnd = null;
+
+    this.selectionHandler = () => {
+      if (document.activeElement === this.textarea) {
+        const selStart = this.textarea.selectionStart;
+        const selEnd = this.textarea.selectionEnd;
+        if (selStart !== this.lastSelectionStart || selEnd !== this.lastSelectionEnd) {
+          this.lastSelectionStart = selStart;
+          this.lastSelectionEnd = selEnd;
+          this.draw();
+        }
+      }
+    };
   }
 
   initDOM(editorClassName) {
@@ -57,7 +77,38 @@ export class BaseEditor {
     this.textarea.focus();
   }
 
+  start(contentSelector, lineSelector, lineInnerHtml) {
+    this.contentSelector = contentSelector;
+    this.lineSelector = lineSelector;
+    this.lineInnerHtml = lineInnerHtml;
+
+    this.measureLayout();
+    this.draw();
+
+    this.textarea.addEventListener('input', () => {
+      this.draw();
+    });
+
+    this.textarea.addEventListener('keydown', (e) => {
+      this.handleKeydown(e);
+    });
+
+    document.addEventListener('selectionchange', this.selectionHandler);
+
+    this.resizeObserver = new ResizeObserver(() => {
+      this.measureLayout();
+      this.draw();
+    });
+    if (this.container) {
+      this.resizeObserver.observe(this.container);
+    }
+  }
+
   cleanup() {
+    document.removeEventListener('selectionchange', this.selectionHandler);
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect();
+    }
     if (this.container) this.container.remove();
     if (this.textarea) this.textarea.remove();
 
@@ -67,6 +118,46 @@ export class BaseEditor {
     this.shell.loginState = this.originalState;
     this.shell.updatePrompt();
     this.shell.focus();
+  }
+
+  measureLayout() {
+    if (!this.contentSelector) return;
+    const contentEl = this.container ? this.container.querySelector(this.contentSelector) : null;
+    if (contentEl) {
+      const rect = contentEl.getBoundingClientRect();
+      let testLine = contentEl.querySelector(this.lineSelector);
+      let createdTestLine = false;
+      if (!testLine) {
+        testLine = document.createElement('div');
+        testLine.className = this.lineSelector.replace(/^\./, '');
+        testLine.innerHTML = this.lineInnerHtml;
+        contentEl.appendChild(testLine);
+        createdTestLine = true;
+      }
+      const lineHeight = testLine.getBoundingClientRect().height;
+      if (createdTestLine) {
+        testLine.remove();
+      }
+      if (rect.height > 0 && lineHeight > 0) {
+        this.maxVisibleLines = Math.floor((rect.height - 10) / (lineHeight + 1));
+      }
+    }
+    if (!this.maxVisibleLines || this.maxVisibleLines <= 0) {
+      this.maxVisibleLines = this.lineSelector.includes('vim') ? 24 : 20;
+    }
+  }
+
+  adjustScroll(curLine) {
+    const maxVisibleLines = this.maxVisibleLines || 20;
+    const { totalLines } = this.getLinesAndCursor();
+    if (curLine < this.scrollTopLine) {
+      this.scrollTopLine = curLine;
+    } else if (curLine >= this.scrollTopLine + maxVisibleLines) {
+      this.scrollTopLine = curLine - maxVisibleLines + 1;
+    }
+    if (this.scrollTopLine + maxVisibleLines > totalLines) {
+      this.scrollTopLine = Math.max(0, totalLines - maxVisibleLines);
+    }
   }
 
   // Get raw lines, cursor indices, and offsets
@@ -173,3 +264,68 @@ export class BaseEditor {
   }
 }
 
+export async function runEditor(EditorClass, args, cmdName, shell) {
+  if (args.length === 0) {
+    shell.print(`${cmdName}: missing filename operand. Usage: ${cmdName} [filename]`, 'color-error');
+    return;
+  }
+
+  let fileArg = args[0].trim();
+  while (fileArg.endsWith('/') && fileArg.length > 1) {
+    fileArg = fileArg.slice(0, -1);
+  }
+  let resolved = shell.fileSystem.resolvePath(shell.currentPath, fileArg);
+  let initialContent = '';
+  let isNewFile = false;
+
+  if (resolved === null) {
+    let parentPathStr = '';
+    let name = fileArg;
+    const lastSlash = fileArg.lastIndexOf('/');
+    if (lastSlash !== -1) {
+      parentPathStr = fileArg.slice(0, lastSlash);
+      name = fileArg.slice(lastSlash + 1);
+      if (parentPathStr === '') {
+        parentPathStr = '/';
+      }
+    }
+
+    const resolvedParent = shell.fileSystem.resolvePath(shell.currentPath, parentPathStr);
+    if (resolvedParent === null) {
+      shell.print(`${cmdName}: cannot open '${fileArg}': No such file or directory`, 'color-error');
+      return;
+    }
+    resolved = [...resolvedParent, name];
+    isNewFile = true;
+  } else {
+    const node = shell.fileSystem.getNodeByPath(resolved);
+    if (node && typeof node === 'object') {
+      shell.print(`${cmdName}: '${fileArg}' is a directory`, 'color-error');
+      return;
+    }
+    try {
+      initialContent = await shell.fileSystem.readFile(resolved);
+    } catch (err) {
+      shell.print(`${cmdName}: error reading '${fileArg}': ${err.message}`, 'color-error');
+      return;
+    }
+  }
+
+  return new Promise((resolve) => {
+    const onSave = (content) => {
+      try {
+        shell.fileSystem.writeFile(resolved, content);
+        return true;
+      } catch (err) {
+        return err.message;
+      }
+    };
+
+    const onExit = () => {
+      resolve();
+    };
+
+    const editor = new EditorClass(shell, fileArg, initialContent, resolved, onSave, onExit, isNewFile);
+    editor.start();
+  });
+}

@@ -1,152 +1,57 @@
-import { BaseEditor } from '../utils/editor.js';
+import { BaseEditor, runEditor } from '../utils/editor.js';
 import { audio } from '../audio.js';
 
 export const nano = {
   helpText: 'Edit a file using GNU nano.',
   run: async (args, shell) => {
-    if (args.length === 0) {
-      shell.print('nano: missing filename operand. Usage: nano [filename]', 'color-error');
-      return;
-    }
-
-    let fileArg = args[0].trim();
-    while (fileArg.endsWith('/') && fileArg.length > 1) {
-      fileArg = fileArg.slice(0, -1);
-    }
-    let resolved = shell.fileSystem.resolvePath(shell.currentPath, fileArg);
-    let initialContent = '';
-    let isNewFile = false;
-
-    if (resolved === null) {
-      // Resolve parent path for a potential new file
-      let parentPathStr = '';
-      let name = fileArg;
-      const lastSlash = fileArg.lastIndexOf('/');
-      if (lastSlash !== -1) {
-        parentPathStr = fileArg.slice(0, lastSlash);
-        name = fileArg.slice(lastSlash + 1);
-        if (parentPathStr === '') {
-          parentPathStr = '/';
-        }
-      }
-
-      const resolvedParent = shell.fileSystem.resolvePath(shell.currentPath, parentPathStr);
-      if (resolvedParent === null) {
-        shell.print(`nano: cannot open '${fileArg}': No such file or directory`, 'color-error');
-        return;
-      }
-      resolved = [...resolvedParent, name];
-      isNewFile = true;
-    } else {
-      const node = shell.fileSystem.getNodeByPath(resolved);
-      if (node && typeof node === 'object') {
-        shell.print(`nano: '${fileArg}' is a directory`, 'color-error');
-        return;
-      }
-      try {
-        initialContent = await shell.fileSystem.readFile(resolved);
-      } catch (err) {
-        shell.print(`nano: error reading '${fileArg}': ${err.message}`, 'color-error');
-        return;
-      }
-    }
-
-    return new Promise((resolve) => {
-      const onSave = (content) => {
-        try {
-          shell.fileSystem.writeFile(resolved, content);
-          return true;
-        } catch (err) {
-          return err.message;
-        }
-      };
-
-      const onExit = () => {
-        resolve();
-      };
-
-      const editor = new NanoEditor(shell, fileArg, initialContent, resolved, onSave, onExit);
-      editor.start();
-    });
+    return runEditor(NanoEditor, args, 'nano', shell);
   }
 };
 
 class NanoEditor extends BaseEditor {
-  constructor(shell, filename, initialContent, resolvedPath, onSave, onExit) {
-    super(shell, filename, initialContent, onSave, onExit);
-    this.resolvedPath = resolvedPath;
+  constructor(shell, filename, initialContent, resolvedPath, onSave, onExit, isNewFile) {
+    super(shell, filename, initialContent, resolvedPath, onSave, onExit, isNewFile);
     this.isPromptingSave = false;
     this.statusMessage = '';
     this.statusTimeout = null;
     this.cutBuffer = '';
-    this.scrollTopLine = 0;
 
     this.promptState = null; // null, 'SEARCH', 'GO_TO_LINE', 'INSERT_FILE'
     this.promptInputText = '';
     this.lastCommandWasCut = false;
 
-    this.lastSelectionStart = null;
-    this.lastSelectionEnd = null;
-
-    this.selectionHandler = () => {
-      if (document.activeElement === this.textarea) {
-        const selStart = this.textarea.selectionStart;
-        const selEnd = this.textarea.selectionEnd;
-        if (selStart !== this.lastSelectionStart || selEnd !== this.lastSelectionEnd) {
-          this.lastSelectionStart = selStart;
-          this.lastSelectionEnd = selEnd;
-          this.draw();
-        }
-      }
-    };
+    this.undoStack = [];
+    this.redoStack = [];
+    this.lastKeyPress = '';
   }
 
   start() {
     this.initDOM('nano-editor');
-    this.measureLayout();
-    this.draw();
+    super.start('.nano-content', '.nano-line', '<span class="color-dim">  1 │ </span><span>&nbsp;</span>');
 
-    this.textarea.addEventListener('input', () => {
-      this.draw();
-    });
-
+    // Attach keydown listener to capture semantic checkpoints before key changes the text
     this.textarea.addEventListener('keydown', (e) => {
-      this.handleKeydown(e);
+      const val = this.textarea.value;
+      const key = e.key;
+      
+      if (key === ' ' || key === 'Enter' || (e.ctrlKey && (key === 'v' || key === 'u' || key === 'k'))) {
+        this.pushUndoState(val);
+      } else if (key === 'Backspace') {
+        if (this.lastKeyPress !== 'Backspace') {
+          this.pushUndoState(val);
+        }
+      } else if (key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        if (this.lastKeyPress === 'Backspace' || this.lastKeyPress === 'paste') {
+          this.pushUndoState(val);
+        }
+      }
+      this.lastKeyPress = key;
     });
-
-    document.addEventListener('selectionchange', this.selectionHandler);
-
-    this.resizeObserver = new ResizeObserver(() => {
-      this.measureLayout();
-      this.draw();
-    });
-    this.resizeObserver.observe(this.container);
   }
 
-  measureLayout() {
-    const contentEl = this.container ? this.container.querySelector('.nano-content') : null;
-    if (contentEl) {
-      const rect = contentEl.getBoundingClientRect();
-      let testLine = contentEl.querySelector('.nano-line');
-      let createdTestLine = false;
-      if (!testLine) {
-        testLine = document.createElement('div');
-        testLine.className = 'nano-line';
-        testLine.innerHTML = '<span class="color-dim">  1 │ </span><span>&nbsp;</span>';
-        contentEl.appendChild(testLine);
-        createdTestLine = true;
-      }
-      const lineHeight = testLine.getBoundingClientRect().height;
-      if (createdTestLine) {
-        testLine.remove();
-      }
-      if (rect.height > 0 && lineHeight > 0) {
-        this.maxVisibleLines = Math.floor((rect.height - 10) / (lineHeight + 1));
-      }
-    }
-    if (!this.maxVisibleLines || this.maxVisibleLines <= 0) {
-      this.maxVisibleLines = 20;
-    }
+  cleanup() {
+    super.cleanup();
+    if (this.statusTimeout) clearTimeout(this.statusTimeout);
   }
 
   showStatus(msg) {
@@ -159,20 +64,95 @@ class NanoEditor extends BaseEditor {
     }, 3000);
   }
 
-  adjustScroll(curLine) {
-    const maxVisibleLines = this.maxVisibleLines || 20;
-    const { totalLines } = this.getLinesAndCursor();
-    if (curLine < this.scrollTopLine) {
-      this.scrollTopLine = curLine;
-    } else if (curLine >= this.scrollTopLine + maxVisibleLines) {
-      this.scrollTopLine = curLine - maxVisibleLines + 1;
-    }
-    if (this.scrollTopLine + maxVisibleLines > totalLines) {
-      this.scrollTopLine = Math.max(0, totalLines - maxVisibleLines);
+  pushUndoState(val = this.textarea.value) {
+    if (this.undoStack.length === 0 || this.undoStack[this.undoStack.length - 1].value !== val) {
+      this.undoStack.push({
+        value: val,
+        selStart: this.textarea.selectionStart,
+        selEnd: this.textarea.selectionEnd
+      });
+      if (this.undoStack.length > 50) {
+        this.undoStack.shift();
+      }
+      this.redoStack = []; // Clear redo stack on new input
     }
   }
 
-  handleKeydown(e) {
+  undo() {
+    if (this.undoStack.length > 0) {
+      const currentVal = this.textarea.value;
+      const state = this.undoStack.pop();
+      
+      this.redoStack.push({
+        value: currentVal,
+        selStart: this.textarea.selectionStart,
+        selEnd: this.textarea.selectionEnd
+      });
+      
+      this.textarea.value = state.value;
+      this.textarea.selectionStart = state.selStart;
+      this.textarea.selectionEnd = state.selEnd;
+      this.draw();
+      this.showStatus('Undid last action');
+    } else {
+      this.showStatus('Nothing to undo');
+    }
+  }
+
+  redo() {
+    if (this.redoStack.length > 0) {
+      const currentVal = this.textarea.value;
+      const state = this.redoStack.pop();
+      
+      this.undoStack.push({
+        value: currentVal,
+        selStart: this.textarea.selectionStart,
+        selEnd: this.textarea.selectionEnd
+      });
+      
+      this.textarea.value = state.value;
+      this.textarea.selectionStart = state.selStart;
+      this.textarea.selectionEnd = state.selEnd;
+      this.draw();
+      this.showStatus('Redid last action');
+    } else {
+      this.showStatus('Nothing to redo');
+    }
+  }
+
+  async writeToClipboard(text) {
+    this.cutBuffer = text;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      }
+    } catch (err) {
+      // Fall back quietly
+    }
+  }
+
+  async handlePaste() {
+    let pasteText = this.cutBuffer;
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const systemText = await navigator.clipboard.readText();
+        if (systemText) {
+          pasteText = systemText;
+        }
+      }
+    } catch (err) {}
+
+    if (!pasteText) return;
+
+    this.pushUndoState();
+    const val = this.textarea.value;
+    const selStart = this.textarea.selectionStart;
+    this.textarea.value = val.slice(0, selStart) + pasteText + val.slice(selStart);
+    this.textarea.selectionStart = this.textarea.selectionEnd = selStart + pasteText.length;
+    this.draw();
+  }
+
+  async handleKeydown(e) {
     const key = e.key.toLowerCase();
 
     // Keyclick audio & Cut Buffer Reset
@@ -270,57 +250,109 @@ class NanoEditor extends BaseEditor {
       return;
     }
 
-    // Ctrl+K Cut Line
+    // Ctrl+K Cut Selection / Line
     if (e.ctrlKey && key === 'k') {
       e.preventDefault();
       const val = this.textarea.value;
       const selStart = this.textarea.selectionStart;
-      const lines = val.split('\n');
-      let currentIdx = 0;
-      let curLine = 0;
+      const selEnd = this.textarea.selectionEnd;
       
-      for (let i = 0; i < lines.length; i++) {
-        const lineEndIdx = currentIdx + lines[i].length;
-        if (selStart >= currentIdx && selStart <= lineEndIdx + 1) {
-          curLine = i;
-          break;
-        }
-        currentIdx = lineEndIdx + 1;
-      }
+      this.pushUndoState(val);
 
-      const cutText = lines[curLine] + '\n';
-      if (this.lastCommandWasCut) {
-        this.cutBuffer += cutText;
+      if (selStart !== selEnd) {
+        const s = Math.min(selStart, selEnd);
+        const e = Math.max(selStart, selEnd);
+        const cutText = val.slice(s, e);
+        await this.writeToClipboard(cutText);
+        
+        this.textarea.value = val.slice(0, s) + val.slice(e);
+        this.textarea.selectionStart = this.textarea.selectionEnd = s;
+        this.lastCommandWasCut = false;
+        this.draw();
+        this.showStatus('Cut selection');
       } else {
-        this.cutBuffer = cutText;
-      }
-      this.lastCommandWasCut = true;
+        const lines = val.split('\n');
+        let currentIdx = 0;
+        let curLine = 0;
+        
+        for (let i = 0; i < lines.length; i++) {
+          const lineEndIdx = currentIdx + lines[i].length;
+          if (selStart >= currentIdx && selStart <= lineEndIdx + 1) {
+            curLine = i;
+            break;
+          }
+          currentIdx = lineEndIdx + 1;
+        }
 
-      lines.splice(curLine, 1);
-      if (lines.length === 0) lines.push('');
-      
-      this.textarea.value = lines.join('\n');
-      
-      let newIdx = 0;
-      for (let i = 0; i < curLine && i < lines.length; i++) {
-        newIdx += lines[i].length + 1;
+        const cutText = lines[curLine] + '\n';
+        if (this.lastCommandWasCut) {
+          this.cutBuffer += cutText;
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(this.cutBuffer);
+            }
+          } catch (err) {}
+        } else {
+          await this.writeToClipboard(cutText);
+        }
+        this.lastCommandWasCut = true;
+
+        lines.splice(curLine, 1);
+        if (lines.length === 0) lines.push('');
+        
+        this.textarea.value = lines.join('\n');
+        
+        let newIdx = 0;
+        for (let i = 0; i < curLine && i < lines.length; i++) {
+          newIdx += lines[i].length + 1;
+        }
+        this.textarea.selectionStart = this.textarea.selectionEnd = newIdx;
+        this.draw();
+        this.showStatus('Cut line');
       }
-      this.textarea.selectionStart = this.textarea.selectionEnd = newIdx;
-      this.draw();
-      this.showStatus('Cut line');
       return;
     }
 
-    // Ctrl+U Paste Line
+    // Alt+6 Copy Selection / Line
+    if (e.altKey && key === '6') {
+      e.preventDefault();
+      const val = this.textarea.value;
+      const selStart = this.textarea.selectionStart;
+      const selEnd = this.textarea.selectionEnd;
+      if (selStart !== selEnd) {
+        const s = Math.min(selStart, selEnd);
+        const e = Math.max(selStart, selEnd);
+        const copiedText = val.slice(s, e);
+        await this.writeToClipboard(copiedText);
+        this.showStatus('Copied selection');
+      } else {
+        const { rawLines, curLine } = this.getLinesAndCursor();
+        const copiedText = rawLines[curLine] + '\n';
+        await this.writeToClipboard(copiedText);
+        this.showStatus('Copied line');
+      }
+      this.lastCommandWasCut = false;
+      return;
+    }
+
+    // Ctrl+U Paste
     if (e.ctrlKey && key === 'u') {
       e.preventDefault();
-      if (this.cutBuffer) {
-        const val = this.textarea.value;
-        const selStart = this.textarea.selectionStart;
-        this.textarea.value = val.slice(0, selStart) + this.cutBuffer + val.slice(selStart);
-        this.textarea.selectionStart = this.textarea.selectionEnd = selStart + this.cutBuffer.length;
-        this.draw();
-      }
+      this.handlePaste();
+      return;
+    }
+
+    // Alt+U Undo
+    if (e.altKey && key === 'u') {
+      e.preventDefault();
+      this.undo();
+      return;
+    }
+
+    // Alt+E Redo
+    if (e.altKey && key === 'e') {
+      e.preventDefault();
+      this.redo();
       return;
     }
 
@@ -331,11 +363,14 @@ class NanoEditor extends BaseEditor {
   Ctrl+G: Show Help
   Ctrl+O: Save File (Write Out)
   Ctrl+X: Exit Nano
-  Ctrl+K: Cut Line
-  Ctrl+U: Paste Line
+  Ctrl+K: Cut Selection / Line
+  Ctrl+U: Paste (Uncut)
   Ctrl+W: Search Text (Where Is)
   Ctrl+C: Show Location
-  Ctrl+/: Go to Line`);
+  Ctrl+/: Go to Line
+  Alt+6: Copy Selection / Line
+  Alt+U: Undo last change
+  Alt+E: Redo last change`);
       return;
     }
 
@@ -389,8 +424,8 @@ class NanoEditor extends BaseEditor {
     if (state === 'SEARCH') {
       if (text) {
         const val = this.textarea.value;
-        const start = val.indexOf(text, this.textarea.selectionStart + 1);
-        const idx = start !== -1 ? start : val.indexOf(text);
+        const start = val.toLowerCase().indexOf(text.toLowerCase(), this.textarea.selectionStart + 1);
+        const idx = start !== -1 ? start : val.toLowerCase().indexOf(text.toLowerCase());
         if (idx !== -1) {
           this.textarea.selectionStart = idx;
           this.textarea.selectionEnd = idx + text.length;
@@ -421,6 +456,7 @@ class NanoEditor extends BaseEditor {
           this.shell.fileSystem.readFile(resolved).then(fileContent => {
             const val = this.textarea.value;
             const selStart = this.textarea.selectionStart;
+            this.pushUndoState(val);
             this.textarea.value = val.slice(0, selStart) + fileContent + val.slice(selStart);
             this.textarea.selectionStart = this.textarea.selectionEnd = selStart + fileContent.length;
             this.draw();
@@ -433,15 +469,6 @@ class NanoEditor extends BaseEditor {
         }
       }
     }
-  }
-
-  cleanup() {
-    super.cleanup();
-    document.removeEventListener('selectionchange', this.selectionHandler);
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect();
-    }
-    if (this.statusTimeout) clearTimeout(this.statusTimeout);
   }
 
   draw() {
@@ -467,11 +494,14 @@ class NanoEditor extends BaseEditor {
     }
 
     const modifiedText = this.isModified ? 'Modified' : '';
-    headerEl.innerHTML = `
+    const expectedHeaderHtml = `
       <span>GNU nano 6.7</span>
       <span>${this.filename}</span>
       <span>${modifiedText}</span>
     `;
+    if (headerEl.innerHTML !== expectedHeaderHtml) {
+      headerEl.innerHTML = expectedHeaderHtml;
+    }
 
     const maxVisibleLines = this.maxVisibleLines || 20;
     const startLine = this.scrollTopLine;
@@ -493,13 +523,14 @@ class NanoEditor extends BaseEditor {
     }
     contentEl.innerHTML = html;
 
+    let expectedFooterHtml = '';
     if (this.promptState) {
       let promptLabel = '';
       if (this.promptState === 'SEARCH') promptLabel = 'Search for: ';
       else if (this.promptState === 'GO_TO_LINE') promptLabel = 'Enter line number: ';
       else if (this.promptState === 'INSERT_FILE') promptLabel = 'Insert file: ';
 
-      footerEl.innerHTML = `
+      expectedFooterHtml = `
         <div class="nano-prompt color-accent">${promptLabel}${this.promptInputText}<span class="terminal-cursor">&nbsp;</span></div>
         <div class="nano-shortcuts-grid">
           <div class="nano-shortcut"><span class="nano-key">^C</span><span class="nano-desc">Cancel</span></div>
@@ -507,7 +538,7 @@ class NanoEditor extends BaseEditor {
         </div>
       `;
     } else if (this.isPromptingSave) {
-      footerEl.innerHTML = `
+      expectedFooterHtml = `
         <div class="nano-prompt color-accent">Save modified buffer? (Answering "No" will DISCARD changes.) [y/n/ctrl+c]</div>
         <div class="nano-shortcuts-grid">
           <div class="nano-shortcut"><span class="nano-key">Y</span><span class="nano-desc">Yes</span></div>
@@ -520,7 +551,7 @@ class NanoEditor extends BaseEditor {
         ? `<div class="nano-status color-accent">${this.statusMessage}</div>` 
         : '';
       
-      footerEl.innerHTML = `
+      expectedFooterHtml = `
         ${statusLineHtml}
         <div class="nano-shortcuts-grid">
           <div class="nano-shortcut"><span class="nano-key">^G</span><span class="nano-desc">Help</span></div>
@@ -542,6 +573,9 @@ class NanoEditor extends BaseEditor {
         </div>
       `;
     }
+
+    if (footerEl.innerHTML !== expectedFooterHtml) {
+      footerEl.innerHTML = expectedFooterHtml;
+    }
   }
 }
-

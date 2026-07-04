@@ -573,4 +573,22 @@ body::after {
 .terminal-editor .terminal-selection {
   background-color: rgba(255, 255, 255, 0.25);
   text-shadow: 0 0 4px rgba(255, 255, 255, 0.4);
-}
+}
+
+/* Vim search highlighting */
+.vim-search-match {
+  background-color: #ffdf00;
+  color: #000000;
+  text-shadow: none !important;
+}
+
+/* Vim insert mode cursor: thin vertical line */
+.terminal-editor.vim-insert-mode .terminal-cursor {
+  background-color: transparent;
+  border-left: 2px solid var(--cursor-color);
+  box-shadow: none;
+  animation: blink 1s step-end infinite;
+  display: inline;
+  padding: 0;
+}
+
