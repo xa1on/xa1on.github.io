@@ -13,16 +13,20 @@ export const virtualFS = {
   }
 };
 
-const BUILTIN_PATHS = [
-  '/about.md',
-  '/contact.md',
-  '/projects.md',
-  '/archive/index.html',
-  '/sokoban/level1.txt',
-  '/sokoban/level2.txt',
-  '/sokoban/level3.txt',
-  '/sokoban/README.md'
-];
+function getFilePaths(node, prefix = '') {
+  let paths = [];
+  for (const [key, value] of Object.entries(node)) {
+    const path = `${prefix}/${key}`;
+    if (value && typeof value === 'object') {
+      paths = paths.concat(getFilePaths(value, path));
+    } else if (value === 'file') {
+      paths.push(path);
+    }
+  }
+  return paths;
+}
+
+const BUILTIN_PATHS = getFilePaths(virtualFS);
 
 function deepMerge(target, source) {
   for (const key of Object.keys(source)) {

@@ -589,19 +589,19 @@ export class Shell {
     ▒▒▒▒       ▒▒▒▒                   </span>▓█</span><span class="red">          ▒                           
     ▒▒▒  ▒          ▒▒               </span>█  █</span><span class="red">               ▒                     
    ▒ ▒ ▒▒▒▒        ▒▒               </span>█    █</span><span class="red">        ▒                           
-   ▒▒▒  ▒          ▒            </span>   █ ▒▒▒  ██</span><span class="red">▒             ▒  ▒                
-  ▒ ▒ ▒  ▒  ▒▒  ▒▒    ▒   ▒</span>█<span class="red">█ ▒</span> ▒ ▀▀▀▀▀▀▀▀▀█▀▀▀▀▀▀▀▀▀▀▀</span><span class="red">                       
+   ▒▒▒  ▒          ▒            </span>   █ ▒▒▒  █</span><span class="red">█▒             ▒  ▒                
+  ▒ ▒ ▒  ▒  ▒▒  ▒▒    ▒   ▒</span>█<span class="red">█ ▒</span> ▒▞▀▀▀▀▀▀▀▀▀█▀▀▀▀▀▀▀▀▛▀▀</span><span class="red">                       
   ▒ ▒            ▒       ██ ▒ ▒</span>██     ▓█ ▒▒ █ ▒     ▒</span><span class="red">                         
   ▒▒▒            ▒  ▒   █ ▒  </span>█<span class="red">█</span>██     ██▒█   ████▒ █</span><span class="red">                          
-   ▒▒   ▒          ▒ ▒ </span>█<span class="red">▒ ▒▒▒</span>  ▒   █     █     ██████</span><span class="red">        ▒          </span> | <span class="blue">arch</span>4ic</span><span class="red">
+   ▒▒   ▒          ▒ ▒ </span>█<span class="red">▒ ▒▒▒</span>  ▒   ▟     ▚     ██████</span><span class="red">        ▒          </span> | <span class="blue">arch</span>4ic</span><span class="red">
   ▒▒▒   ▒      ▒▒    ▒</span>█▒<span class="red">  █▒</span> ▒█  ▒ █      ██▒  ██ ████</span><span class="red">▒                       
-  ▒▒▒   ▒       ▒▒    ██ ▒</span> █ █ █   ▒█▓  <span class="red">▒</span>██ ███▒█ █  <span class="red">▒</span> █</span><span class="red">                      
-  ▒ ▒           ▒▒      </span>█ ▒ <span class="red">█</span>█ <span class="red">▒</span>    █ █     █  <span class="red">▒</span> █    <span class="red">▒</span>█</span><span class="red">                      
+  ▒▒▒   ▒       ▒▒    ██ ▒</span> █ █ █   ▒█▓ ▄<span class="red">▒</span>██ ███▒█ █  <span class="red">▒</span> █</span><span class="red">                      
+  ▒ ▒           ▒▒      </span>█ ▒ <span class="red">█</span>█ <span class="red">▒</span>    ▄   ▚   █  <span class="red">▒</span> █    <span class="red">▒</span>█</span><span class="red">                      
   ▒ ▒ ▒▒▒▒      ▒▒    ▒▒ </span>█<span class="red">█▒</span>█ ▄▄▄▄▄▒▒▄▄▒▄▄▓▒▒▒▄▄▄▄<span class="red">▒</span>███<span class="red">▒                       
     ▒▒  ▒       ▒▒ ▒      </span>█   <span class="red">▒</span>█ ▒ ▒▒██████   ██   █<span class="red">   ▒  ▒          ▒  ▒     
    ▒ ▒ ▒▒▒▒▒   ▒  ▒▒▒    </span>█    █                █ <span class="red">▒</span>  █<span class="red">     ▒        ▒▒▒  ▒     
     ▒▒▒  ▒ ▒      ▒▒▒▒  </span>█    █              ▒<span class="red">   █▒  ▒</span>█<span class="red">  ▒▒          ▒  ▒      
-    ▒ ▒▒    ▒          </span>█▄▄▄▄█               ▒    █▄▄▄▄█<span class="red">               ▒▒      
+    ▒ ▒▒    ▒          </span>█▄▄▄▄▞               ▒    ▚▄▄▄█<span class="red">               ▒▒      
      ░ ░ ░   ░   ▒    ▒                                         ░     ░       
       ░ ░     ░         ░                                      ░     ░ ░      </span><span class="color-dim red">
        ░ ░░    ░            ░░░                ░░░           ░░    ░░ ░       </span>
