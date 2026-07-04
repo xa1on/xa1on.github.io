@@ -1,0 +1,339 @@
+import { audio } from '../js/audio.js';
+
+export const sokoban = {
+  helpText: 'Play a game of Sokoban. Usage: sokoban [path/to/custom_level.txt]',
+  run: async (args, shell) => {
+    let customPathStr = args.length > 0 ? args[0] : '';
+    let levelText = '';
+    let isCustom = false;
+    let currentLevelIndex = 1;
+    const maxBuiltinLevels = 3;
+
+    // Helper to parse map from string content
+    function parseMap(mapStr) {
+      const lines = mapStr.split(/\r?\n/).filter(line => line.trim().length > 0);
+      if (lines.length === 0) throw new Error('Empty map file');
+
+      const height = lines.length;
+      const width = Math.max(...lines.map(line => line.length));
+
+      // Grid layers
+      const staticGrid = Array.from({ length: height }, () => Array(width).fill(' '));
+      const boxGrid = Array.from({ length: height }, () => Array(width).fill(false));
+      let playerPos = { x: -1, y: -1 };
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < lines[y].length; x++) {
+          const char = lines[y][x];
+          if (char === '#') {
+            staticGrid[y][x] = '#';
+          } else if (char === '.') {
+            staticGrid[y][x] = '.';
+          } else if (char === '$') {
+            boxGrid[y][x] = true;
+          } else if (char === '*') {
+            staticGrid[y][x] = '.';
+            boxGrid[y][x] = true;
+          } else if (char === '@') {
+            playerPos = { x, y };
+          } else if (char === '+') {
+            staticGrid[y][x] = '.';
+            playerPos = { x, y };
+          }
+        }
+      }
+
+      if (playerPos.x === -1) throw new Error('Player not found in map (@)');
+      return { staticGrid, boxGrid, playerPos, width, height };
+    }
+
+    // Fallback builtin levels in case file reading fails or is empty
+    const builtinFallbackLevels = {
+      1: `
+    #####
+    #@  #
+    # $ #
+    # . #
+    #####
+`,
+      2: `
+  #####
+  #   #
+  #$#$#
+  #.@.#
+  # . #
+  #####
+`,
+      3: `
+  ######
+###  @ #
+# . $$ #
+#  .   #
+########
+`
+    };
+
+    async function loadLevel(indexOrPath) {
+      if (typeof indexOrPath === 'string') {
+        // Load custom level
+        const targetPath = shell.resolvePath(shell.currentPath, indexOrPath);
+        if (!targetPath) {
+          throw new Error(`File not found: ${indexOrPath}`);
+        }
+        const text = await shell.fileSystem.readFile(targetPath);
+        isCustom = true;
+        return parseMap(text);
+      } else {
+        // Load builtin level
+        try {
+          const pathArr = ['sokoban', `level${indexOrPath}.txt`];
+          const text = await shell.fileSystem.readFile(pathArr);
+          isCustom = false;
+          return parseMap(text);
+        } catch (e) {
+          // Use fallback levels
+          isCustom = false;
+          const fallback = builtinFallbackLevels[indexOrPath];
+          if (!fallback) throw new Error(`Fallback level ${indexOrPath} not found`);
+          return parseMap(fallback);
+        }
+      }
+    }
+
+    // Load initial map state
+    let mapState = null;
+    let initialMapStr = ''; // Used for resetting level
+
+    if (customPathStr) {
+      try {
+        mapState = await loadLevel(customPathStr);
+        initialMapStr = await shell.fileSystem.readFile(shell.resolvePath(shell.currentPath, customPathStr));
+      } catch (err) {
+        shell.print(`Error starting custom Sokoban level: ${err.message}`, 'color-error');
+        return;
+      }
+    } else {
+      try {
+        mapState = await loadLevel(currentLevelIndex);
+      } catch (err) {
+        shell.print(`Error starting Sokoban: ${err.message}`, 'color-error');
+        return;
+      }
+    }
+
+    shell.loginState = 'GAME';
+
+    let moveCount = 0;
+    let pushCount = 0;
+    let gameOver = false;
+    let quitGame = false;
+
+    const gameContainer = document.createElement('pre');
+    gameContainer.style.fontFamily = 'monospace';
+    gameContainer.style.lineHeight = '1.15';
+    gameContainer.style.color = 'var(--text-color)';
+    shell.output.appendChild(gameContainer);
+
+    function checkWin() {
+      // Game won when all targets have boxes
+      for (let y = 0; y < mapState.height; y++) {
+        for (let x = 0; x < mapState.width; x++) {
+          if (mapState.staticGrid[y][x] === '.' && !mapState.boxGrid[y][x]) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    function drawSokoban() {
+      let board = `--- SOKOBAN ---`;
+      if (isCustom) {
+        board += ` (Custom Level: ${customPathStr})\n`;
+      } else {
+        board += ` (Level ${currentLevelIndex}/${maxBuiltinLevels})\n`;
+      }
+
+      const bestMovesKey = isCustom ? `sokoban_best_moves_custom_${customPathStr}` : `sokoban_best_moves_level_${currentLevelIndex}`;
+      const bestMoves = localStorage.getItem(bestMovesKey) || 'N/A';
+      board += ` Best Moves: ${bestMoves}\n\n`;
+
+      for (let y = 0; y < mapState.height; y++) {
+        let line = ' ';
+        for (let x = 0; x < mapState.width; x++) {
+          const isPlayer = (mapState.playerPos.x === x && mapState.playerPos.y === y);
+          const isBox = mapState.boxGrid[y][x];
+          const isTarget = mapState.staticGrid[y][x] === '.';
+          const isWall = mapState.staticGrid[y][x] === '#';
+
+          if (isWall) {
+            line += '<span class="color-dim">#</span>';
+          } else if (isPlayer) {
+            line += isTarget ? '<span class="blue">+</span>' : '<span class="blue">@</span>';
+          } else if (isBox) {
+            line += isTarget ? '<span class="green">*</span>' : '<span class="yellow">$</span>';
+          } else if (isTarget) {
+            line += '<span class="cyan">.</span>';
+          } else {
+            line += ' ';
+          }
+        }
+        board += line + '\n';
+      }
+
+      board += `\n Moves: ${moveCount} ║ Pushes: ${pushCount}\n`;
+      board += ` Controls: [Arrows]/[WASD] to Move. [R] to Restart. [Q] to quit.\n`;
+      gameContainer.innerHTML = board;
+      shell.body.scrollTop = shell.body.scrollHeight;
+    }
+
+    drawSokoban();
+
+    const handlePlayerMove = (dx, dy) => {
+      const nextX = mapState.playerPos.x + dx;
+      const nextY = mapState.playerPos.y + dy;
+
+      if (nextX < 0 || nextX >= mapState.width || nextY < 0 || nextY >= mapState.height) return;
+
+      const nextStatic = mapState.staticGrid[nextY][nextX];
+      const hasBox = mapState.boxGrid[nextY][nextX];
+
+      if (nextStatic === '#') {
+        // Wall, blocked
+        return;
+      }
+
+      if (hasBox) {
+        // Try pushing box
+        const boxNextX = nextX + dx;
+        const boxNextY = nextY + dy;
+
+        if (boxNextX < 0 || boxNextX >= mapState.width || boxNextY < 0 || boxNextY >= mapState.height) return;
+
+        const boxNextStatic = mapState.staticGrid[boxNextY][boxNextX];
+        const boxNextHasBox = mapState.boxGrid[boxNextY][boxNextX];
+
+        if (boxNextStatic === '#' || boxNextHasBox) {
+          // Box blocked by wall or another box
+          return;
+        }
+
+        // Move box
+        mapState.boxGrid[nextY][nextX] = false;
+        mapState.boxGrid[boxNextY][boxNextX] = true;
+        pushCount++;
+        audio.playSokobanSlide();
+
+        // If target filled
+        if (boxNextStatic === '.') {
+          audio.playSokobanSuccess();
+        }
+      }
+
+      // Move player
+      mapState.playerPos.x = nextX;
+      mapState.playerPos.y = nextY;
+      moveCount++;
+
+      // Trigger redraw
+      drawSokoban();
+
+      // Check win
+      if (checkWin()) {
+        gameOver = true;
+      }
+    };
+
+    const keyHandler = (e) => {
+      if (shell.loginState !== 'GAME') return;
+      const key = e.key.toLowerCase();
+
+      if (key === 'q') {
+        e.preventDefault();
+        quitGame = true;
+        return;
+      }
+
+      if (key === 'r') {
+        e.preventDefault();
+        // Reset level
+        moveCount = 0;
+        pushCount = 0;
+        if (isCustom) {
+          mapState = parseMap(initialMapStr);
+        } else {
+          // reload built-in fallback/file map
+          loadLevel(currentLevelIndex).then(parsed => {
+            mapState = parsed;
+            drawSokoban();
+          });
+          return;
+        }
+        drawSokoban();
+        return;
+      }
+
+      if (key === 'arrowup' || key === 'w') {
+        e.preventDefault();
+        handlePlayerMove(0, -1);
+      } else if (key === 'arrowdown' || key === 's') {
+        e.preventDefault();
+        handlePlayerMove(0, 1);
+      } else if (key === 'arrowleft' || key === 'a') {
+        e.preventDefault();
+        handlePlayerMove(-1, 0);
+      } else if (key === 'arrowright' || key === 'd') {
+        e.preventDefault();
+        handlePlayerMove(1, 0);
+      }
+    };
+
+    document.addEventListener('keydown', keyHandler);
+
+    while (true) {
+      await new Promise(res => setTimeout(res, 100));
+
+      if (shell.abortSignal || quitGame) {
+        quitGame = true;
+        break;
+      }
+
+      if (gameOver) {
+        audio.playTetrisLevelUp(); // victory sound
+        shell.print(`Level complete! Total Moves: ${moveCount}, Pushes: ${pushCount}`, 'color-green');
+
+        // Record high score moves
+        const bestMovesKey = isCustom ? `sokoban_best_moves_custom_${customPathStr}` : `sokoban_best_moves_level_${currentLevelIndex}`;
+        const previousBest = localStorage.getItem(bestMovesKey);
+        if (!previousBest || moveCount < parseInt(previousBest, 10)) {
+          localStorage.setItem(bestMovesKey, moveCount.toString());
+          shell.print(`NEW BEST RECORD! Moves: ${moveCount}`, 'color-accent');
+        }
+
+        // If not custom level, transition to next level
+        if (!isCustom && currentLevelIndex < maxBuiltinLevels) {
+          shell.print(`Loading Level ${currentLevelIndex + 1}...`, 'color-blue');
+          await new Promise(r => setTimeout(r, 1200));
+          currentLevelIndex++;
+          moveCount = 0;
+          pushCount = 0;
+          gameOver = false;
+          mapState = await loadLevel(currentLevelIndex);
+          drawSokoban();
+        } else {
+          break;
+        }
+      }
+    }
+
+    // Cleanup
+    document.removeEventListener('keydown', keyHandler);
+    shell.loginState = 'LOGGED_IN';
+
+    if (quitGame) {
+      shell.print('Sokoban game exited.', 'color-dim');
+    } else {
+      shell.print('Sokoban victory! All levels complete.', 'color-green');
+    }
+  }
+};

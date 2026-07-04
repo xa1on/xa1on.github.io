@@ -447,6 +447,47 @@ class AudioManager {
       timeOffset += note.dur;
     });
   }
+
+  // Snake Sound FX
+  playSnakeEat() {
+    this.playBeep(523.25, 1046.50, 0.08, 'triangle', 0.15); // C5 to C6
+  }
+
+  playSnakeCrash() {
+    this.playBeep(300, 80, 0.25, 'sawtooth', 0.15);
+  }
+
+  // Minesweeper Sound FX
+  playMinesweeperFlag() {
+    this.playBeep(880, 880, 0.08, 'sine', 0.15); // A5
+  }
+
+  playMinesweeperExplosion() {
+    this.playBeep(150, 30, 0.5, 'sawtooth', 0.25);
+  }
+
+  // Space Invaders Sound FX
+  playInvadersShoot() {
+    this.playBeep(200, 800, 0.06, 'sawtooth', 0.1);
+  }
+
+  playInvadersExplosion() {
+    this.playBeep(250, 60, 0.15, 'sawtooth', 0.15);
+  }
+
+  // Sokoban Sound FX
+  playSokobanSlide() {
+    this.playBeep(80, 40, 0.15, 'triangle', 0.2);
+  }
+
+  playSokobanSuccess() {
+    if (!this.enabled) return;
+    this.ensureContext();
+    if (!this.ctx || this.ctx.state === 'suspended') return;
+    const now = this.ctx.currentTime;
+    this.playBeepAt(587.33, 587.33, 0.08, 'triangle', 0.12, now); // D5
+    this.playBeepAt(880.00, 880.00, 0.15, 'triangle', 0.12, now + 0.08); // A5
+  }
 }
 
 export const audio = new AudioManager();

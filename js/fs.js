@@ -4,14 +4,24 @@ export const virtualFS = {
   "archive": {
     "index.html": "file"
   },
-  "projects.md": "file"
+  "projects.md": "file",
+  "sokoban": {
+    "level1.txt": "file",
+    "level2.txt": "file",
+    "level3.txt": "file",
+    "README.md": "file"
+  }
 };
 
 const BUILTIN_PATHS = [
   '/about.md',
   '/contact.md',
   '/projects.md',
-  '/archive/index.html'
+  '/archive/index.html',
+  '/sokoban/level1.txt',
+  '/sokoban/level2.txt',
+  '/sokoban/level3.txt',
+  '/sokoban/README.md'
 ];
 
 function deepMerge(target, source) {

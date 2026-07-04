@@ -6,6 +6,9 @@ export const tetris = {
     // Enter gameplay state
     shell.loginState = 'GAME';
 
+    const highscoreKey = 'tetris_highscore';
+    let highscore = parseInt(localStorage.getItem(highscoreKey) || '0', 10);
+
     return new Promise((resolve) => {
 
       const COLS = 10;
@@ -224,19 +227,19 @@ export const tetris = {
           } else if (y === 12) {
             sideInfo = `  <span class="color-accent">${String(score).padStart(6, '0')}</span>`;
           } else if (y === 13) {
-            sideInfo = `  LINES     `;
+            sideInfo = `  HI-SCORE  `;
           } else if (y === 14) {
-            sideInfo = `  <span class="color-accent">${linesCleared}</span>`;
+            sideInfo = `  <span class="yellow">${String(highscore).padStart(6, '0')}</span>`;
           } else if (y === 15) {
-            sideInfo = `  LEVEL     `;
+            sideInfo = `  LINES     `;
           } else if (y === 16) {
-            sideInfo = `  <span class="color-accent">${level}</span>`;
+            sideInfo = `  <span class="color-accent">${linesCleared}</span>`;
           } else if (y === 17) {
-            sideInfo = `  CONTROLS  `;
+            sideInfo = `  LEVEL     `;
           } else if (y === 18) {
-            sideInfo = `  Arrows/Space`;
+            sideInfo = `  <span class="color-accent">${level}</span>`;
           } else if (y === 19) {
-            sideInfo = `  C:Hold/Up:Rot`;
+            sideInfo = `  C:Hold/Up:Rot/Space:Drop`;
           }
 
           line += sideInfo + '\n';
@@ -492,7 +495,12 @@ export const tetris = {
         if (shell.abortSignal) {
           shell.print('Tetris interrupted.', 'color-dim');
         } else {
-          shell.print('--- GAME OVER ---', 'color-error');
+          if (score > highscore) {
+            localStorage.setItem(highscoreKey, score.toString());
+            shell.print('NEW HIGH SCORE!', 'color-green');
+          } else {
+            shell.print('--- GAME OVER ---', 'color-error');
+          }
           shell.print(`Final Score: <span class="color-accent">${score}</span>`);
           shell.print(`Lines Cleared: <span class="color-accent">${linesCleared}</span>`);
         }
