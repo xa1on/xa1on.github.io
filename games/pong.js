@@ -1,7 +1,12 @@
 import { audio } from '../js/audio.js';
 
 export const pong = {
-  helpText: 'Play a game of Pong (easy|medium|hard).',
+  name: 'pong',
+  description: 'Play a game of Pong.',
+  category: 'game',
+  args: [
+    { name: 'difficulty', description: 'Difficulty level (easy, medium, hard).', required: false, suggestions: ['easy', 'medium', 'hard'] }
+  ],
   run: async (args, shell) => {
     let diffText = args.length > 0 ? args[0].toLowerCase() : '';
 

@@ -1,11 +1,11 @@
 export const touch = {
-  helpText: 'Create an empty file.',
+  name: 'touch',
+  description: 'Create an empty file.',
+  category: 'filesystem',
+  args: [
+    { name: 'filename', description: 'Name of the empty file to create.', required: true }
+  ],
   run: async (args, shell) => {
-    if (args.length === 0) {
-      shell.print('touch: missing file operand. Usage: touch [filename]', 'color-error');
-      return;
-    }
-
     let fileArg = args[0].trim();
     while (fileArg.endsWith('/') && fileArg.length > 1) {
       fileArg = fileArg.slice(0, -1);

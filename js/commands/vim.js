@@ -2,7 +2,12 @@ import { BaseEditor, runEditor } from '../utils/editor.js';
 import { audio } from '../audio.js';
 
 export const vim = {
-  helpText: 'Edit a file using Vim.',
+  name: 'vim',
+  description: 'Edit a text file using the vim terminal editor.',
+  category: 'filesystem',
+  args: [
+    { name: 'filename', description: 'File to edit or create.', required: true }
+  ],
   run: async (args, shell) => {
     return runEditor(VimEditor, args, 'vim', shell);
   }

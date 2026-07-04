@@ -1,7 +1,10 @@
 import { audio } from '../js/audio.js';
 
 export const tetris = {
-  helpText: 'Play a game of Tetris.',
+  name: 'tetris',
+  description: 'Play a game of Tetris.',
+  category: 'game',
+  args: [],
   run: async (args, shell) => {
     // Enter gameplay state
     shell.loginState = 'GAME';

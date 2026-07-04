@@ -1,5 +1,8 @@
 export const clear = {
-  helpText: 'Clear the terminal screen.',
+  name: 'clear',
+  description: 'Clear the terminal screen.',
+  category: 'general',
+  args: [],
   run: async (args, shell) => {
     shell.clear();
   }

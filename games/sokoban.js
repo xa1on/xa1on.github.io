@@ -1,7 +1,12 @@
 import { audio } from '../js/audio.js';
 
 export const sokoban = {
-  helpText: 'Play a game of Sokoban. Usage: sokoban [path/to/custom_level.txt]',
+  name: 'sokoban',
+  description: 'Play a game of Sokoban.',
+  category: 'game',
+  args: [
+    { name: 'level_path', description: 'Path to custom level file.', required: false }
+  ],
   run: async (args, shell) => {
     let customPathStr = args.length > 0 ? args[0] : '';
     let levelText = '';

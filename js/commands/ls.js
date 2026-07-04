@@ -1,5 +1,10 @@
 export const ls = {
-  helpText: 'List contents of the current directory.',
+  name: 'ls',
+  description: 'List contents of a directory.',
+  category: 'filesystem',
+  args: [
+    { name: 'path', description: 'Optional path to list contents of.', required: false }
+  ],
   run: async (args, shell) => {
     let targetPath = shell.currentPath;
     if (args.length > 0) {

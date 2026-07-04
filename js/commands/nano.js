@@ -2,7 +2,12 @@ import { BaseEditor, runEditor } from '../utils/editor.js';
 import { audio } from '../audio.js';
 
 export const nano = {
-  helpText: 'Edit a file using GNU nano.',
+  name: 'nano',
+  description: 'Edit a text file using the nano terminal editor.',
+  category: 'filesystem',
+  args: [
+    { name: 'filename', description: 'File to edit or create.', required: true }
+  ],
   run: async (args, shell) => {
     return runEditor(NanoEditor, args, 'nano', shell);
   }

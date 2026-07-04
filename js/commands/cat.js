@@ -1,10 +1,11 @@
 export const cat = {
-  helpText: 'Display the contents of a text file or open an HTML page.',
+  name: 'cat',
+  description: 'Display the contents of a text file or open an HTML page.',
+  category: 'filesystem',
+  args: [
+    { name: 'filename', description: 'The text file to display or HTML page to open.', required: true }
+  ],
   run: async (args, shell) => {
-    if (args.length === 0) {
-      shell.print('cat: missing file operand. Usage: cat [filename]', 'color-error');
-      return;
-    }
     const fileArg = args[0];
     const resolved = shell.fileSystem.resolvePath(shell.currentPath, fileArg);
     if (resolved === null) {

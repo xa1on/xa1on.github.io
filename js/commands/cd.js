@@ -1,5 +1,10 @@
 export const cd = {
-  helpText: 'Change the current working directory.',
+  name: 'cd',
+  description: 'Change the current working directory.',
+  category: 'filesystem',
+  args: [
+    { name: 'path', description: 'The directory path to change to.', required: false }
+  ],
   run: async (args, shell) => {
     if (args.length === 0 || args[0] === '~') {
       shell.currentPath = [];

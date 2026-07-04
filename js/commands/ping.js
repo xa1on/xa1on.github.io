@@ -1,5 +1,10 @@
 export const ping = {
-  helpText: 'Simulate pinging a host.',
+  name: 'ping',
+  description: 'Simulate pinging a host. Try it\'s friend, pong!',
+  category: 'general',
+  args: [
+    { name: 'host', description: 'The host name or IP address to ping.', required: false }
+  ],
   run: async (args, shell) => {
     const host = args.length > 0 ? args[0] : 'chenghao.li';
     const ip = `${Math.floor(Math.random() * 223) + 1}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 254) + 1}`;

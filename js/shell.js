@@ -367,7 +367,30 @@ export class Shell {
     this.abortSignal = false;
 
     if (this.commands[command]) {
-      await this.commands[command].run(args, this);
+      const cmd = this.commands[command];
+
+      // Intercept -h or --help to display detailed command help
+      if (args.includes('-h') || args.includes('--help')) {
+        await this.commands.help.run([command], this);
+        return;
+      }
+
+      // Automatically validate required arguments
+      if (cmd.args && cmd.args.length > 0) {
+        const requiredArgs = cmd.args.filter(a => a.required);
+        if (args.length < requiredArgs.length) {
+          const missingArg = requiredArgs[args.length];
+          let usage = cmd.name;
+          const argUsageStrings = cmd.args.map(a => a.required ? `<${a.name}>` : `[${a.name}]`);
+          if (argUsageStrings.length > 0) {
+            usage += ' ' + argUsageStrings.join(' ');
+          }
+          this.print(`${command}: missing required argument &lt;${missingArg.name}&gt;. Usage: <span class="color-green">${usage}</span>`, 'color-error');
+          return;
+        }
+      }
+
+      await cmd.run(args, this);
       return;
     }
 
@@ -414,6 +437,35 @@ export class Shell {
         }
       }
     } else {
+      const command = parts[0].toLowerCase();
+      const cmd = this.commands[command];
+      const argIdx = parts.length - 2;
+      const argMetadata = (cmd && cmd.args) ? cmd.args[argIdx] : null;
+
+      if (argMetadata && argMetadata.suggestions && argMetadata.suggestions.length > 0) {
+        const typedArg = parts[parts.length - 1].toLowerCase();
+        const suggestions = argMetadata.suggestions;
+        const matches = suggestions.filter(s => s.startsWith(typedArg));
+
+        if (matches.length === 1) {
+          parts[parts.length - 1] = matches[0] + ' ';
+          this.input.value = parts.join(' ');
+          this.updateInputDisplay(this.input.value);
+        } else if (matches.length > 1) {
+          const lcp = getLongestCommonPrefix(matches);
+          if (lcp.length > typedArg.length) {
+            parts[parts.length - 1] = lcp;
+            this.input.value = parts.join(' ');
+            this.updateInputDisplay(this.input.value);
+          } else {
+            this.print(matches.join('    '), 'color-accent');
+            const displayPath = this.currentPath.length === 0 ? '~' : '/' + this.currentPath.join('/');
+            this.print(`<span class="color-accent"><span class="red">${this.currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${currentVal}`);
+          }
+        }
+        return;
+      }
+
       const argVal = parts[parts.length - 1];
       const slashIdx = argVal.lastIndexOf('/');
       let targetPath = [...this.currentPath];

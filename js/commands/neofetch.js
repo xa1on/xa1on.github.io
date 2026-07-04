@@ -1,5 +1,8 @@
 export const neofetch = {
-  helpText: 'Display system and portfolio information in a beautiful layout.',
+  name: 'neofetch',
+  description: 'Display system and portfolio information in a beautiful layout.',
+  category: 'general',
+  args: [],
   run: async (args, shell) => {
     // 1. Calculate Uptime
     const totalSeconds = Math.floor(performance.now() / 1000);

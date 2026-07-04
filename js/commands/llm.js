@@ -1,5 +1,10 @@
 export const llm = {
-  helpText: 'Interact with a local in-browser LLM via WebGPU.',
+  name: 'llm',
+  description: 'Interact with a local in-browser LLM via WebGPU.',
+  category: 'general',
+  args: [
+    { name: 'prompt', description: 'Optional initial prompt for the AI agent.', required: false }
+  ],
   run: async (args, shell) => {
     try {
       const { llm: llmInstance } = await import('../llm.js');

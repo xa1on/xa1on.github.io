@@ -1,7 +1,12 @@
 import { audio } from '../js/audio.js';
 
 export const invaders = {
-  helpText: 'Play a game of Space Invaders (easy|medium|hard).',
+  name: 'invaders',
+  description: 'Play a game of Space Invaders.',
+  category: 'game',
+  args: [
+    { name: 'difficulty', description: 'Difficulty level (easy, medium, hard).', required: false, suggestions: ['easy', 'medium', 'hard'] }
+  ],
   run: async (args, shell) => {
     let diffText = args.length > 0 ? args[0].toLowerCase() : '';
 

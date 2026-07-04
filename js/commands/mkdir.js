@@ -1,11 +1,11 @@
 export const mkdir = {
-  helpText: 'Create a new directory.',
+  name: 'mkdir',
+  description: 'Create a new directory.',
+  category: 'filesystem',
+  args: [
+    { name: 'directory_name', description: 'Name of the new directory to create.', required: true }
+  ],
   run: async (args, shell) => {
-    if (args.length === 0) {
-      shell.print('mkdir: missing operand. Usage: mkdir [directory_name]', 'color-error');
-      return;
-    }
-
     let dirArg = args[0].trim();
     while (dirArg.endsWith('/') && dirArg.length > 1) {
       dirArg = dirArg.slice(0, -1);

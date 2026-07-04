@@ -14,6 +14,14 @@ import { mkdir } from './mkdir.js';
 import { rm } from './rm.js';
 import { nano } from './nano.js';
 import { vim } from './vim.js';
+import { mute } from './mute.js';
+import { unmute } from './unmute.js';
+import { pong } from '../../games/pong.js';
+import { tetris } from '../../games/tetris.js';
+import { snake } from '../../games/snake.js';
+import { minesweeper } from '../../games/minesweeper.js';
+import { invaders } from '../../games/invaders.js';
+import { sokoban } from '../../games/sokoban.js';
 
 export const commands = {
   help,
@@ -32,16 +40,13 @@ export const commands = {
   rm,
   nano,
   vim,
-  mute: {
-    helpText: 'Mute all sounds.',
-    run: async (args, shell) => {
-      await sound.run(['off'], shell);
-    }
-  },
-  unmute: {
-    helpText: 'Unmute all sounds.',
-    run: async (args, shell) => {
-      await sound.run(['on'], shell);
-    }
-  }
+  mute,
+  unmute,
+  pong,
+  tetris,
+  snake,
+  minesweeper,
+  invaders,
+  sokoban
 };
+

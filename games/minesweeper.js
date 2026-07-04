@@ -1,7 +1,12 @@
 import { audio } from '../js/audio.js';
 
 export const minesweeper = {
-  helpText: 'Play a game of Minesweeper (easy|medium|hard|custom <cols> <rows> <mines>).',
+  name: 'minesweeper',
+  description: 'Play a game of Minesweeper.',
+  category: 'game',
+  args: [
+    { name: 'difficulty', description: 'Difficulty level (easy, medium, hard, or custom <cols> <rows> <mines>).', required: false, suggestions: ['easy', 'medium', 'hard', 'custom'] }
+  ],
   run: async (args, shell) => {
     let cols = 0, rows = 0, mineCount = 0;
     let difficultyPreset = '';

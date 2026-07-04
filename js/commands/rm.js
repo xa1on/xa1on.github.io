@@ -1,11 +1,12 @@
 export const rm = {
-  helpText: 'Remove files or directories (rm [-rf] [path]).',
+  name: 'rm',
+  description: 'Remove files or directories.',
+  category: 'filesystem',
+  args: [
+    { name: 'flags', description: 'Options: -rf for recursive force deletion.', required: false },
+    { name: 'path', description: 'Path to the file or directory to remove.', required: true }
+  ],
   run: async (args, shell) => {
-    if (args.length === 0) {
-      shell.print('rm: missing operand. Usage: rm [-rf] [path]', 'color-error');
-      return;
-    }
-
     let recursive = false;
     let force = false;
     const paths = [];

@@ -1,7 +1,12 @@
 import { audio } from '../audio.js';
 
 export const sound = {
-  helpText: 'Toggle audio on or off (sound [on|off]).',
+  name: 'sound',
+  description: 'Toggle audio on or off or configure sound settings.',
+  category: 'audio',
+  args: [
+    { name: 'state', description: 'Optional state: on, off, enable, disable, mute, or unmute.', required: false, suggestions: ['on', 'off', 'enable', 'disable', 'mute', 'unmute'] }
+  ],
   run: async (args, shell) => {
     if (args.length === 0) {
       const newState = audio.toggle();
