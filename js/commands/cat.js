@@ -33,8 +33,8 @@ export const cat = {
 
       try {
         const content = await shell.fileSystem.readFile(resolved);
-        const parsedHtml = shell.parseMarkdown(content);
-        shell.print(parsedHtml);
+        const output = fileName.endsWith('.md') ? shell.parseMarkdown(content) : shell.escapeHTML(content);
+        shell.print(output);
       } catch (err) {
         shell.print(`cat: error reading ${fileArg}: ${err.message}`, 'color-error');
       }

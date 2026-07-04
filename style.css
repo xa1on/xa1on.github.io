@@ -591,3 +591,51 @@ body::after {
   display: inline;
   padding: 0;
 }
+
+/* ==========================================
+   Markdown Tables & Code Blocks (Pure Text Style)
+   ========================================== */
+.markdown-table-text {
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.35;
+  margin: 0;
+  white-space: pre;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.markdown-code-block {
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.35;
+  margin: 0;
+  white-space: pre;
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.markdown-code-block code {
+  font-family: inherit;
+  color: inherit;
+}
+
+.markdown-hr {
+  border: none;
+  height: 1em;
+  margin: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.markdown-hr::before {
+  content: "------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--dim-color);
+  opacity: 0.45;
+  white-space: nowrap;
+  letter-spacing: 1px;
+}

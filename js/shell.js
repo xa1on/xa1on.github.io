@@ -288,6 +288,10 @@ export class Shell {
     return parseMarkdown(text);
   }
 
+  escapeHTML(text) {
+    return escapeHTML(text);
+  }
+
   clear() {
     this.output.innerHTML = '';
   }
