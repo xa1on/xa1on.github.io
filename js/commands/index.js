@@ -9,6 +9,11 @@ import { ping } from './ping.js';
 import { llm } from './llm.js';
 import { neofetch } from './neofetch.js';
 import { sound } from './sound.js';
+import { touch } from './touch.js';
+import { mkdir } from './mkdir.js';
+import { rm } from './rm.js';
+import { nano } from './nano.js';
+import { vim } from './vim.js';
 
 export const commands = {
   help,
@@ -22,6 +27,11 @@ export const commands = {
   llm,
   neofetch,
   sound,
+  touch,
+  mkdir,
+  rm,
+  nano,
+  vim,
   mute: {
     helpText: 'Mute all sounds.',
     run: async (args, shell) => {

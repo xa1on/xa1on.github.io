@@ -30,17 +30,12 @@ export const cat = {
         return;
       }
 
-      const filePath = 'server_root/' + resolved.join('/');
       try {
-        const response = await fetch(filePath);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const rawText = await response.text();
-        const parsedHtml = shell.parseMarkdown(rawText);
+        const content = await shell.fileSystem.readFile(resolved);
+        const parsedHtml = shell.parseMarkdown(content);
         shell.print(parsedHtml);
       } catch (err) {
-        shell.print(`cat: error reading ${fileArg}: Permission denied or file corrupt`, 'color-error');
+        shell.print(`cat: error reading ${fileArg}: ${err.message}`, 'color-error');
       }
     }
   }
