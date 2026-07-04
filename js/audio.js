@@ -370,6 +370,20 @@ class AudioManager {
     osc.stop(time + duration + 0.01);
   }
 
+  playMelody(notes, type = 'sine', volume = 0.1) {
+    if (!this.enabled) return;
+    this.ensureContext();
+    if (!this.ctx || this.ctx.state === 'suspended') return;
+    const now = this.ctx.currentTime;
+    notes.forEach(note => {
+      const startF = note.f;
+      const endF = note.endF !== undefined ? note.endF : startF;
+      const dur = note.dur !== undefined ? note.dur : 0.08;
+      const delay = note.delay !== undefined ? note.delay : 0;
+      this.playBeepAt(startF, endF, dur, type, volume, now + delay);
+    });
+  }
+
   // Pong Sound FX
   playPongHit() {
     this.playBeep(600, 300, 0.08, 'square', 0.15);
@@ -380,14 +394,13 @@ class AudioManager {
   }
 
   playPongScore() {
-    if (!this.enabled) return;
-    this.ensureContext();
-    if (!this.ctx || this.ctx.state === 'suspended') return;
-    const now = this.ctx.currentTime;
-    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-    notes.forEach((f, i) => {
-      this.playBeepAt(f, f, 0.06, 'square', 0.1, now + i * 0.05);
-    });
+    const notes = [
+      { f: 523.25, dur: 0.06, delay: 0.00 },
+      { f: 659.25, dur: 0.06, delay: 0.05 },
+      { f: 783.99, dur: 0.06, delay: 0.10 },
+      { f: 1046.50, dur: 0.06, delay: 0.15 }
+    ];
+    this.playMelody(notes, 'square', 0.1);
   }
 
   playPongMiss() {
@@ -408,44 +421,36 @@ class AudioManager {
   }
 
   playTetrisLine() {
-    if (!this.enabled) return;
-    this.ensureContext();
-    if (!this.ctx || this.ctx.state === 'suspended') return;
-    const now = this.ctx.currentTime;
-    const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98]; // C5, E5, G5, C6, E6, G6
-    notes.forEach((f, i) => {
-      this.playBeepAt(f, f * 1.05, 0.05, 'square', 0.1, now + i * 0.04);
-    });
+    const notes = [
+      { f: 523.25, endF: 523.25 * 1.05, dur: 0.05, delay: 0.00 },
+      { f: 659.25, endF: 659.25 * 1.05, dur: 0.05, delay: 0.04 },
+      { f: 783.99, endF: 783.99 * 1.05, dur: 0.05, delay: 0.08 },
+      { f: 1046.50, endF: 1046.50 * 1.05, dur: 0.05, delay: 0.12 },
+      { f: 1318.51, endF: 1318.51 * 1.05, dur: 0.05, delay: 0.16 },
+      { f: 1567.98, endF: 1567.98 * 1.05, dur: 0.05, delay: 0.20 }
+    ];
+    this.playMelody(notes, 'square', 0.1);
   }
 
   playTetrisLevelUp() {
-    if (!this.enabled) return;
-    this.ensureContext();
-    if (!this.ctx || this.ctx.state === 'suspended') return;
-    const now = this.ctx.currentTime;
-    const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
-    notes.forEach((f, i) => {
-      const dur = i === notes.length - 1 ? 0.4 : 0.08;
-      this.playBeepAt(f, f, dur, 'square', 0.12, now + i * 0.08);
-    });
+    const notes = [
+      { f: 523.25, dur: 0.08, delay: 0.00 },
+      { f: 659.25, dur: 0.08, delay: 0.08 },
+      { f: 783.99, dur: 0.08, delay: 0.16 },
+      { f: 1046.50, dur: 0.08, delay: 0.24 },
+      { f: 1318.51, dur: 0.40, delay: 0.32 }
+    ];
+    this.playMelody(notes, 'square', 0.12);
   }
 
   playTetrisGameOver() {
-    if (!this.enabled) return;
-    this.ensureContext();
-    if (!this.ctx || this.ctx.state === 'suspended') return;
-    const now = this.ctx.currentTime;
     const notes = [
-      { f: 261.63, dur: 0.18 }, // C4
-      { f: 246.94, dur: 0.18 }, // B3
-      { f: 233.08, dur: 0.18 }, // Bb3
-      { f: 220.00, endF: 60, dur: 0.6 } // A3 sliding down
+      { f: 261.63, dur: 0.18, delay: 0.00 },
+      { f: 246.94, dur: 0.18, delay: 0.18 },
+      { f: 233.08, dur: 0.18, delay: 0.36 },
+      { f: 220.00, endF: 60, dur: 0.60, delay: 0.54 }
     ];
-    let timeOffset = 0;
-    notes.forEach(note => {
-      this.playBeepAt(note.f, note.endF || note.f, note.dur, 'sawtooth', 0.1, now + timeOffset);
-      timeOffset += note.dur;
-    });
+    this.playMelody(notes, 'sawtooth', 0.1);
   }
 
   // Snake Sound FX
@@ -481,12 +486,11 @@ class AudioManager {
   }
 
   playSokobanSuccess() {
-    if (!this.enabled) return;
-    this.ensureContext();
-    if (!this.ctx || this.ctx.state === 'suspended') return;
-    const now = this.ctx.currentTime;
-    this.playBeepAt(587.33, 587.33, 0.08, 'triangle', 0.12, now); // D5
-    this.playBeepAt(880.00, 880.00, 0.15, 'triangle', 0.12, now + 0.08); // A5
+    const notes = [
+      { f: 587.33, dur: 0.08, delay: 0.00 },
+      { f: 880.00, dur: 0.15, delay: 0.08 }
+    ];
+    this.playMelody(notes, 'triangle', 0.12);
   }
 }
 

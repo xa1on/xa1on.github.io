@@ -95,47 +95,69 @@ export const invaders = {
     function drawInvaders() {
       let board = '┌' + '─'.repeat(width) + '┐\n';
 
+      // 1. Create a 2D matrix representing the screen
+      const screen = Array.from({ length: height }, () => Array(width).fill(null));
+
+      // 2. Mark player ship (y = 27, 28)
+      const px = game.playerX;
+      if (px + 2 >= 0 && px + 2 < width) {
+        screen[27][px + 2] = 'player';
+      }
+      for (let x = px; x <= px + 4; x++) {
+        if (x >= 0 && x < width) {
+          screen[28][x] = 'player';
+        }
+      }
+
+      // 3. Mark aliens (each alien is 4x2 pixels)
+      game.aliens.forEach(al => {
+        if (al.alive) {
+          for (let dy = 0; dy < 2; dy++) {
+            for (let dx = 0; dx < 4; dx++) {
+              const ax = al.x + dx;
+              const ay = al.y + dy;
+              if (ax >= 0 && ax < width && ay >= 0 && ay < height) {
+                screen[ay][ax] = 'alien';
+              }
+            }
+          }
+        }
+      });
+
+      // 4. Mark bunkers
+      game.bunkers.forEach(b => {
+        if (b.hp > 0) {
+          if (b.x >= 0 && b.x < width && b.y >= 0 && b.y < height) {
+            screen[b.y][b.x] = 'bunker_' + b.hp;
+          }
+        }
+      });
+
+      // 5. Mark player bullets
+      game.bullets.forEach(b => {
+        const ry = Math.round(b.y);
+        if (b.x >= 0 && b.x < width && ry >= 0 && ry < height) {
+          screen[ry][b.x] = 'pbullet';
+        }
+      });
+
+      // 6. Mark alien bullets
+      game.alienBullets.forEach(b => {
+        const ry = Math.round(b.y);
+        if (b.x >= 0 && b.x < width && ry >= 0 && ry < height) {
+          screen[ry][b.x] = 'abullet';
+        }
+      });
+
+      // Render cells from screen buffer
       for (let r = 0; r < height / 2; r++) {
         let line = '│';
         const topY = 2 * r;
         const bottomY = 2 * r + 1;
 
         for (let x = 0; x < width; x++) {
-          // Check collision items for top and bottom subpixels
-          let topType = null;
-          let bottomType = null;
-
-          // 1. Check player ship (renders at y = 27, 28)
-          // Ship layout: top center at x = playerX+2, bottom row at x = playerX to playerX+4
-          const isPlayerTop = (y) => (y === 27 && x === game.playerX + 2);
-          const isPlayerBottom = (y) => (y === 28 && x >= game.playerX && x <= game.playerX + 4);
-
-          if (isPlayerTop(topY) || isPlayerBottom(topY)) topType = 'player';
-          if (isPlayerTop(bottomY) || isPlayerBottom(bottomY)) bottomType = 'player';
-
-          // 2. Check aliens (each alien is 4x2 pixels)
-          const getAlienAt = (ax, ay) => {
-            return game.aliens.find(al => al.alive && ax >= al.x && ax < al.x + 4 && ay >= al.y && ay < al.y + 2);
-          };
-          if (getAlienAt(x, topY)) topType = 'alien';
-          if (getAlienAt(x, bottomY)) bottomType = 'alien';
-
-          // 3. Check Bunkers
-          const getBunkerAt = (bx, by) => game.bunkers.find(b => b.x === bx && b.y === by && b.hp > 0);
-          const topBunker = getBunkerAt(x, topY);
-          const bottomBunker = getBunkerAt(x, bottomY);
-          if (topBunker) topType = 'bunker_' + topBunker.hp;
-          if (bottomBunker) bottomType = 'bunker_' + bottomBunker.hp;
-
-          // 4. Check Bullets
-          const hasPlayerBullet = (bx, by) => game.bullets.some(b => b.x === bx && Math.round(b.y) === by);
-          const hasAlienBullet = (bx, by) => game.alienBullets.some(b => b.x === bx && Math.round(b.y) === by);
-
-          if (hasPlayerBullet(x, topY)) topType = 'pbullet';
-          else if (hasAlienBullet(x, topY)) topType = 'abullet';
-
-          if (hasPlayerBullet(x, bottomY)) bottomType = 'pbullet';
-          else if (hasAlienBullet(x, bottomY)) bottomType = 'abullet';
+          const topType = screen[topY][x];
+          const bottomType = screen[bottomY][x];
 
           // Select matching sub-pixel character representation
           let cellChar = ' ';
@@ -185,22 +207,22 @@ export const invaders = {
       if (shell.loginState !== 'GAME') return;
       const key = e.key.toLowerCase();
 
-      if (key === 'q') {
+      if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'a', 'd', ' '].includes(key) || e.key === ' ') {
         e.preventDefault();
+      }
+
+      if (key === 'q') {
         game.gameOver = true;
         return;
       }
 
       if (key === 'arrowleft' || key === 'a') {
-        e.preventDefault();
         game.playerX = Math.max(0, game.playerX - 2);
         drawInvaders();
       } else if (key === 'arrowright' || key === 'd') {
-        e.preventDefault();
         game.playerX = Math.min(width - 5, game.playerX + 2);
         drawInvaders();
       } else if (e.key === ' ') {
-        e.preventDefault();
         // Limit active player bullets
         if (game.bullets.length < 3) {
           game.bullets.push({ x: game.playerX + 2, y: game.playerY - 2 });
@@ -264,47 +286,49 @@ export const invaders = {
           }
         });
 
-        // 5. Collisions: Player bullets hitting Aliens
-        game.bullets.forEach((bullet, bIdx) => {
-          game.aliens.forEach(al => {
-            if (al.alive && bullet.x >= al.x && bullet.x < al.x + 4 && Math.round(bullet.y) >= al.y && Math.round(bullet.y) < al.y + 2) {
-              al.alive = false;
-              game.bullets.splice(bIdx, 1);
-              game.score += 30;
-              audio.playInvadersExplosion();
-            }
-          });
-        });
+        // 5. Collisions: Player bullets hitting Aliens (Iterated backwards to prevent index skips)
+        for (let i = game.bullets.length - 1; i >= 0; i--) {
+          const bullet = game.bullets[i];
+          const hitAlien = game.aliens.find(al => al.alive && bullet.x >= al.x && bullet.x < al.x + 4 && Math.round(bullet.y) >= al.y && Math.round(bullet.y) < al.y + 2);
+          if (hitAlien) {
+            hitAlien.alive = false;
+            game.bullets.splice(i, 1);
+            game.score += 30;
+            audio.playInvadersExplosion();
+          }
+        }
 
-        // 6. Collisions: Player bullets hitting Bunkers
-        game.bullets.forEach((bullet, bIdx) => {
+        // 6. Collisions: Player bullets hitting Bunkers (Iterated backwards to prevent index skips)
+        for (let i = game.bullets.length - 1; i >= 0; i--) {
+          const bullet = game.bullets[i];
           const hitBunker = game.bunkers.find(b => b.hp > 0 && b.x === bullet.x && b.y === Math.round(bullet.y));
           if (hitBunker) {
             hitBunker.hp--;
-            game.bullets.splice(bIdx, 1);
+            game.bullets.splice(i, 1);
           }
-        });
+        }
 
-        // 7. Collisions: Alien bullets hitting Bunkers
-        game.alienBullets.forEach((bullet, bIdx) => {
+        // 7. Collisions: Alien bullets hitting Bunkers (Iterated backwards to prevent index skips)
+        for (let i = game.alienBullets.length - 1; i >= 0; i--) {
+          const bullet = game.alienBullets[i];
           const hitBunker = game.bunkers.find(b => b.hp > 0 && b.x === bullet.x && b.y === Math.round(bullet.y));
           if (hitBunker) {
             hitBunker.hp--;
-            game.alienBullets.splice(bIdx, 1);
+            game.alienBullets.splice(i, 1);
           }
-        });
+        }
 
-        // 8. Collisions: Alien bullets hitting Player
-        game.alienBullets.forEach((bullet, bIdx) => {
-          // Player bounds: base y = 28, top y = 27
+        // 8. Collisions: Alien bullets hitting Player (Iterated backwards to prevent index skips)
+        for (let i = game.alienBullets.length - 1; i >= 0; i--) {
+          const bullet = game.alienBullets[i];
           const isPlayerHit = (bullet.x >= game.playerX && bullet.x <= game.playerX + 4 && Math.round(bullet.y) === 28) ||
             (bullet.x === game.playerX + 2 && Math.round(bullet.y) === 27);
           if (isPlayerHit) {
-            game.alienBullets.splice(bIdx, 1);
+            game.alienBullets.splice(i, 1);
             game.gameOver = true;
             audio.playTetrisGameOver();
           }
-        });
+        }
 
         // 9. Check Aliens landing
         game.aliens.forEach(al => {

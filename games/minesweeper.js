@@ -22,8 +22,10 @@ export const minesweeper = {
         cols = parseInt(args[1], 10);
         rows = parseInt(args[2], 10);
         mineCount = parseInt(args[3], 10);
-        if (isNaN(cols) || isNaN(rows) || isNaN(mineCount) || cols <= 0 || rows <= 0 || mineCount <= 0 || mineCount >= cols * rows) {
-          shell.print('Invalid custom dimensions. Usage: minesweeper custom <cols> <rows> <mines>', 'color-error');
+        const totalCells = cols * rows;
+        const maxMines = totalCells > 9 ? totalCells - 9 : totalCells - 1;
+        if (mineCount > maxMines) {
+          shell.print(`Too many mines for a ${cols}x${rows} board. Max allowed: ${maxMines}`, 'color-error');
           return;
         }
         difficultyPreset = 'custom';
@@ -61,344 +63,373 @@ export const minesweeper = {
 
     shell.loginState = 'GAME';
 
-    // Game state
-    const grid = Array.from({ length: rows }, () => Array.from({ length: cols }, () => ({
-      isMine: false,
-      isRevealed: false,
-      isFlagged: false,
-      neighborMines: 0
-    })));
+    return new Promise((resolve) => {
+      // Game state
+      const grid = Array.from({ length: rows }, () => Array.from({ length: cols }, () => ({
+        isMine: false,
+        isRevealed: false,
+        isFlagged: false,
+        neighborMines: 0
+      })));
 
-    let firstClick = true;
-    let gameOver = false;
-    let gameWon = false;
-    let cursorX = 0;
-    let cursorY = 0;
-    let startTime = null;
-    let elapsedSeconds = 0;
-    let flagsCount = 0;
-    let touchFlagMode = false; // Toggle for touch screen dig/flag mode
+      let firstClick = true;
+      let gameOver = false;
+      let gameWon = false;
+      let cursorX = 0;
+      let cursorY = 0;
+      let startTime = null;
+      let elapsedSeconds = 0;
+      let flagsCount = 0;
+      let touchFlagMode = false; // Toggle for touch screen dig/flag mode
 
-    // Create containers
-    const gameWrapper = document.createElement('div');
-    gameWrapper.style.userSelect = 'none';
+      // Create containers
+      const gameWrapper = document.createElement('div');
+      gameWrapper.style.userSelect = 'none';
 
-    // Event delegation on gameWrapper for the Mode toggle button
-    gameWrapper.addEventListener('click', (e) => {
-      const modeBtn = e.target.closest('#ms-mode-toggle');
-      if (modeBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-        touchFlagMode = !touchFlagMode;
-        audio.playLinkClick();
-        drawBoard();
-      }
-    });
+      // Event delegation on gameWrapper for the Mode toggle button
+      gameWrapper.addEventListener('click', (e) => {
+        const modeBtn = e.target.closest('#ms-mode-toggle');
+        if (modeBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (gameOver) return; // Disable changing mode after Game Over
+          touchFlagMode = !touchFlagMode;
+          audio.playLinkClick();
+          drawBoard();
+        }
+      });
 
-    const headerContainer = document.createElement('div');
-    headerContainer.style.fontFamily = 'monospace';
-    headerContainer.style.marginBottom = '6px';
-    gameWrapper.appendChild(headerContainer);
+      const headerContainer = document.createElement('div');
+      headerContainer.style.fontFamily = 'monospace';
+      headerContainer.style.marginBottom = '6px';
+      gameWrapper.appendChild(headerContainer);
 
-    const boardContainer = document.createElement('pre');
-    boardContainer.style.fontFamily = 'monospace';
-    boardContainer.style.lineHeight = '1.15';
-    boardContainer.style.cursor = 'default';
-    boardContainer.style.display = 'block';
-    gameWrapper.appendChild(boardContainer);
+      const boardContainer = document.createElement('pre');
+      boardContainer.style.fontFamily = 'monospace';
+      boardContainer.style.lineHeight = '1.15';
+      boardContainer.style.cursor = 'default';
+      boardContainer.style.display = 'block';
+      gameWrapper.appendChild(boardContainer);
 
-    const controlContainer = document.createElement('div');
-    controlContainer.style.fontFamily = 'monospace';
-    controlContainer.style.marginTop = '6px';
-    gameWrapper.appendChild(controlContainer);
+      const controlContainer = document.createElement('div');
+      controlContainer.style.fontFamily = 'monospace';
+      controlContainer.style.marginTop = '6px';
+      gameWrapper.appendChild(controlContainer);
 
-    shell.output.appendChild(gameWrapper);
+      shell.output.appendChild(gameWrapper);
 
-    // Color definitions for cell numbers
-    const numberColors = {
-      1: 'blue',
-      2: 'green',
-      3: 'red',
-      4: 'magenta',
-      5: 'yellow',
-      6: 'cyan',
-      7: 'white',
-      8: 'color-dim'
-    };
+      // Color definitions for cell numbers
+      const numberColors = {
+        1: 'blue',
+        2: 'green',
+        3: 'red',
+        4: 'magenta',
+        5: 'yellow',
+        6: 'cyan',
+        7: 'white',
+        8: 'color-dim'
+      };
 
-    function initMines(safeX, safeY) {
-      let minesPlaced = 0;
-      while (minesPlaced < mineCount) {
-        const x = Math.floor(Math.random() * cols);
-        const y = Math.floor(Math.random() * rows);
+      function initMines(safeX, safeY) {
+        let minesPlaced = 0;
+        const totalCells = cols * rows;
+        const useReducedSafeZone = totalCells <= 9;
 
-        // Ensure mine is not at safe spot or its 3x3 neighborhood
-        const isSafeZone = Math.abs(x - safeX) <= 1 && Math.abs(y - safeY) <= 1;
-        if (!grid[y][x].isMine && !isSafeZone) {
-          grid[y][x].isMine = true;
-          minesPlaced++;
+        while (minesPlaced < mineCount) {
+          const x = Math.floor(Math.random() * cols);
+          const y = Math.floor(Math.random() * rows);
+
+          // Safe zone constraint: 3x3 unless board is too small, in which case just the clicked cell is safe
+          const isSafe = useReducedSafeZone 
+            ? (x === safeX && y === safeY)
+            : (Math.abs(x - safeX) <= 1 && Math.abs(y - safeY) <= 1);
+
+          if (!grid[y][x].isMine && !isSafe) {
+            grid[y][x].isMine = true;
+            minesPlaced++;
+          }
+        }
+
+        // Compute neighbor counts
+        for (let y = 0; y < rows; y++) {
+          for (let x = 0; x < cols; x++) {
+            if (grid[y][x].isMine) continue;
+            let count = 0;
+            for (let dy = -1; dy <= 1; dy++) {
+              for (let dx = -1; dx <= 1; dx++) {
+                const ny = y + dy;
+                const nx = x + dx;
+                if (ny >= 0 && ny < rows && nx >= 0 && nx < cols && grid[ny][nx].isMine) {
+                  count++;
+                }
+              }
+            }
+            grid[y][x].neighborMines = count;
+          }
         }
       }
 
-      // Compute neighbor counts
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          if (grid[y][x].isMine) continue;
-          let count = 0;
-          for (let dy = -1; dy <= 1; dy++) {
-            for (let dx = -1; dx <= 1; dx++) {
-              const ny = y + dy;
-              const nx = x + dx;
-              if (ny >= 0 && ny < rows && nx >= 0 && nx < cols && grid[ny][nx].isMine) {
-                count++;
+      function checkWinCondition() {
+        for (let y = 0; y < rows; y++) {
+          for (let x = 0; x < cols; x++) {
+            if (!grid[y][x].isMine && !grid[y][x].isRevealed) {
+              return false;
+            }
+          }
+        }
+        return true;
+      }
+
+      const cleanup = () => {
+        clearInterval(timerInterval);
+        document.removeEventListener('keydown', keyHandler);
+        boardContainer.removeEventListener('click', handleMouseClick);
+        boardContainer.removeEventListener('contextmenu', handleMouseRightClick);
+        shell.loginState = 'LOGGED_IN';
+      };
+
+      const finishGame = () => {
+        cleanup();
+
+        // Print final score/outcome
+        if (gameWon) {
+          shell.print(`Victory! Board cleared in ${elapsedSeconds} seconds.`, 'color-green');
+
+          if (difficultyPreset && difficultyPreset !== 'custom') {
+            const bestTimeKey = `minesweeper_best_${difficultyPreset}`;
+            const previousBest = localStorage.getItem(bestTimeKey);
+            if (!previousBest || elapsedSeconds < parseInt(previousBest, 10)) {
+              localStorage.setItem(bestTimeKey, elapsedSeconds.toString());
+              shell.print(`NEW BEST TIME for ${difficultyPreset.toUpperCase()}: ${elapsedSeconds} seconds!`, 'color-accent');
+            }
+          }
+        } else if (shell.abortSignal) {
+          shell.print('Minesweeper interrupted.', 'color-dim');
+        } else {
+          shell.print('Game Over! You triggered a mine.', 'color-error');
+        }
+
+        resolve();
+      };
+
+      function revealCell(x, y) {
+        if (x < 0 || x >= cols || y < 0 || y >= rows) return;
+        const cell = grid[y][x];
+        if (cell.isRevealed || cell.isFlagged) return;
+
+        if (firstClick) {
+          firstClick = false;
+          initMines(x, y);
+          startTime = Date.now();
+        }
+
+        cell.isRevealed = true;
+
+        if (cell.isMine) {
+          gameOver = true;
+          audio.playMinesweeperExplosion();
+          // Reveal all mines
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              if (grid[r][c].isMine) grid[r][c].isRevealed = true;
+            }
+          }
+          drawBoard();
+          finishGame();
+          return;
+        }
+
+        audio.playPongHit();
+
+        // Zero propagation (Iterative to avoid stack overflow)
+        if (cell.neighborMines === 0) {
+          const queue = [{ x, y }];
+          while (queue.length > 0) {
+            const current = queue.shift();
+            for (let dy = -1; dy <= 1; dy++) {
+              for (let dx = -1; dx <= 1; dx++) {
+                const nx = current.x + dx;
+                const ny = current.y + dy;
+                if (nx >= 0 && nx < cols && ny >= 0 && ny < rows) {
+                  const neighbor = grid[ny][nx];
+                  if (!neighbor.isRevealed && !neighbor.isFlagged && !neighbor.isMine) {
+                    neighbor.isRevealed = true;
+                    if (neighbor.neighborMines === 0) {
+                      queue.push({ x: nx, y: ny });
+                    }
+                  }
+                }
               }
             }
           }
-          grid[y][x].neighborMines = count;
         }
-      }
-    }
 
-    function checkWinCondition() {
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          if (!grid[y][x].isMine && !grid[y][x].isRevealed) {
-            return false;
-          }
-        }
-      }
-      return true;
-    }
-
-    function revealCell(x, y) {
-      if (x < 0 || x >= cols || y < 0 || y >= rows) return;
-      const cell = grid[y][x];
-      if (cell.isRevealed || cell.isFlagged) return;
-
-      if (firstClick) {
-        firstClick = false;
-        initMines(x, y);
-        startTime = Date.now();
-      }
-
-      cell.isRevealed = true;
-
-      if (cell.isMine) {
-        gameOver = true;
-        audio.playMinesweeperExplosion();
-        // Reveal all mines
-        for (let r = 0; r < rows; r++) {
-          for (let c = 0; c < cols; c++) {
-            if (grid[r][c].isMine) grid[r][c].isRevealed = true;
-          }
-        }
-        return;
-      }
-
-      audio.playPongHit();
-
-      // Zero propagation
-      if (cell.neighborMines === 0) {
-        for (let dy = -1; dy <= 1; dy++) {
-          for (let dx = -1; dx <= 1; dx++) {
-            revealCell(x + dx, y + dy);
-          }
+        if (checkWinCondition()) {
+          gameWon = true;
+          gameOver = true;
+          audio.playPongScore();
+          drawBoard();
+          finishGame();
         }
       }
 
-      if (checkWinCondition()) {
-        gameWon = true;
-        gameOver = true;
-        audio.playPongScore();
+      function toggleFlag(x, y) {
+        if (x < 0 || x >= cols || y < 0 || y >= rows) return;
+        const cell = grid[y][x];
+        if (cell.isRevealed) return;
+
+        cell.isFlagged = !cell.isFlagged;
+        flagsCount += cell.isFlagged ? 1 : -1;
+        audio.playMinesweeperFlag();
       }
-    }
 
-    function toggleFlag(x, y) {
-      if (x < 0 || x >= cols || y < 0 || y >= rows) return;
-      const cell = grid[y][x];
-      if (cell.isRevealed) return;
+      function drawBoard() {
+        // Draw Header
+        const minesLeft = Math.max(0, mineCount - flagsCount);
+        headerContainer.innerHTML = ` Mines: <span class="red">${minesLeft}</span> ║ Time: <span class="yellow">${elapsedSeconds}</span>s\n`;
 
-      cell.isFlagged = !cell.isFlagged;
-      flagsCount += cell.isFlagged ? 1 : -1;
-      audio.playMinesweeperFlag();
-    }
+        // Draw Grid
+        let boardText = '┌' + '──'.repeat(cols) + '─┐\n';
+        for (let y = 0; y < rows; y++) {
+          let line = '│ ';
+          for (let x = 0; x < cols; x++) {
+            const cell = grid[y][x];
+            const isCursor = (x === cursorX && y === cursorY);
+            let cellHTML = '';
 
-    function drawBoard() {
-      // Draw Header
-      const minesLeft = Math.max(0, mineCount - flagsCount);
-      headerContainer.innerHTML = ` Mines: <span class="red">${minesLeft}</span> ║ Time: <span class="yellow">${elapsedSeconds}</span>s\n`;
-
-      // Draw Grid
-      let boardText = '┌' + '──'.repeat(cols) + '─┐\n';
-      for (let y = 0; y < rows; y++) {
-        let line = '│ ';
-        for (let x = 0; x < cols; x++) {
-          const cell = grid[y][x];
-          const isCursor = (x === cursorX && y === cursorY);
-          let cellHTML = '';
-
-          if (cell.isRevealed) {
-            if (cell.isMine) {
-              cellHTML = '<span class="red">*</span> ';
-            } else if (cell.neighborMines > 0) {
-              const colorClass = numberColors[cell.neighborMines] || 'white';
-              cellHTML = `<span class="${colorClass}">${cell.neighborMines}</span> `;
+            if (cell.isRevealed) {
+              if (cell.isMine) {
+                cellHTML = '<span class="red">*</span> ';
+              } else if (cell.neighborMines > 0) {
+                const colorClass = numberColors[cell.neighborMines] || 'white';
+                cellHTML = `<span class="${colorClass}">${cell.neighborMines}</span> `;
+              } else {
+                cellHTML = '<span class="color-dim">.</span> ';
+              }
+            } else if (cell.isFlagged) {
+              cellHTML = '<span class="red">F</span> ';
             } else {
-              cellHTML = '<span class="color-dim">.</span> ';
+              cellHTML = '# ';
             }
-          } else if (cell.isFlagged) {
-            cellHTML = '<span class="red">F</span> ';
-          } else {
-            cellHTML = '# ';
+
+            // Add cell container with interaction details
+            const highlightClass = isCursor ? ' style="background-color: rgba(255,255,255,0.2); font-weight: bold;"' : '';
+            line += `<span class="ms-cell" data-x="${x}" data-y="${y}"${highlightClass} style="cursor: pointer;">${cellHTML}</span>`;
           }
-
-          // Add cell container with interaction details
-          const highlightClass = isCursor ? ' style="background-color: rgba(255,255,255,0.2); font-weight: bold;"' : '';
-          line += `<span class="ms-cell" data-x="${x}" data-y="${y}"${highlightClass} style="cursor: pointer;">${cellHTML}</span>`;
+          line += '│\n';
+          boardText += line;
         }
-        line += '│\n';
-        boardText += line;
+        boardText += '└' + '──'.repeat(cols) + '─┘\n';
+        boardContainer.innerHTML = boardText;
+
+        // Draw interactive bottom toolbar for Touch/Mobile
+        let controlsHTML = '';
+        const modeColorClass = touchFlagMode ? 'red' : 'blue';
+        const modeText = touchFlagMode ? 'FLAG (F)' : 'DIG (reveal)';
+        controlsHTML += `MODE: <span id="ms-mode-toggle" class="cmd-link ${modeColorClass}" style="text-decoration: underline; font-weight: bold; cursor: pointer;">${modeText}</span>  `;
+        controlsHTML += `<span class="color-dim">(Taps perform active mode)</span>\n\n`;
+        controlsHTML += ` Controls: [Arrows]/[WASD] to move, [Enter]/[Space] to Dig, [F]/[M] to Flag. [Q] to quit.\n`;
+        controlContainer.innerHTML = controlsHTML;
+
+        shell.body.scrollTop = shell.body.scrollHeight;
       }
-      boardText += '└' + '──'.repeat(cols) + '─┘\n';
-      boardContainer.innerHTML = boardText;
 
-      // Draw interactive bottom toolbar for Touch/Mobile
-      let controlsHTML = '';
-      const modeColorClass = touchFlagMode ? 'red' : 'blue';
-      const modeText = touchFlagMode ? 'FLAG (F)' : 'DIG (reveal)';
-      controlsHTML += `MODE: <span id="ms-mode-toggle" class="cmd-link ${modeColorClass}" style="text-decoration: underline; font-weight: bold; cursor: pointer;">${modeText}</span>  `;
-      controlsHTML += `<span class="color-dim">(Taps perform active mode)</span>\n\n`;
-      controlsHTML += ` Controls: [Arrows]/[WASD] to move, [Enter]/[Space] to Dig, [F]/[M] to Flag. [Q] to quit.\n`;
-      controlContainer.innerHTML = controlsHTML;
+      drawBoard();
 
-      shell.body.scrollTop = shell.body.scrollHeight;
-    }
+      // Timer Interval that also checks cancellation
+      const timerInterval = setInterval(() => {
+        if (shell.abortSignal) {
+          finishGame();
+          return;
+        }
+        if (startTime && !gameOver) {
+          elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+          drawBoard();
+        }
+      }, 500);
 
-    drawBoard();
+      // Keyboard handlers
+      const keyHandler = (e) => {
+        if (shell.loginState !== 'GAME' || gameOver) return;
+        const key = e.key.toLowerCase();
 
-    // Timer Interval
-    const timerInterval = setInterval(() => {
-      if (startTime && !gameOver && !shell.abortSignal) {
-        elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+        if (key === 'q') {
+          e.preventDefault();
+          gameOver = true;
+          drawBoard();
+          finishGame();
+          return;
+        }
+
+        let moved = false;
+        if (key === 'arrowup' || key === 'w') {
+          e.preventDefault();
+          if (cursorY > 0) { cursorY--; moved = true; }
+        } else if (key === 'arrowdown' || key === 's') {
+          e.preventDefault();
+          if (cursorY < rows - 1) { cursorY++; moved = true; }
+        } else if (key === 'arrowleft' || key === 'a') {
+          e.preventDefault();
+          if (cursorX > 0) { cursorX--; moved = true; }
+        } else if (key === 'arrowright' || key === 'd') {
+          e.preventDefault();
+          if (cursorX < cols - 1) { cursorX++; moved = true; }
+        } else if (e.key === ' ' || key === 'enter') {
+          e.preventDefault();
+          revealCell(cursorX, cursorY);
+          moved = true;
+        } else if (key === 'f' || key === 'm') {
+          e.preventDefault();
+          toggleFlag(cursorX, cursorY);
+          moved = true;
+        }
+
+        if (moved) {
+          drawBoard();
+        }
+      };
+      document.addEventListener('keydown', keyHandler);
+
+      // Mouse handlers (Event Delegation on Board Container)
+      const handleMouseClick = (e) => {
+        if (gameOver) return;
+        const cellElement = e.target.closest('.ms-cell');
+        if (!cellElement) return;
+
+        const x = parseInt(cellElement.getAttribute('data-x'), 10);
+        const y = parseInt(cellElement.getAttribute('data-y'), 10);
+        cursorX = x;
+        cursorY = y;
+
+        e.preventDefault();
+
+        if (touchFlagMode) {
+          toggleFlag(x, y);
+        } else {
+          revealCell(x, y);
+        }
         drawBoard();
-      }
-    }, 500);
+      };
 
-    // Keyboard handlers
-    const keyHandler = (e) => {
-      if (shell.loginState !== 'GAME') return;
-      const key = e.key.toLowerCase();
+      const handleMouseRightClick = (e) => {
+        if (gameOver) return;
+        const cellElement = e.target.closest('.ms-cell');
+        if (!cellElement) return;
 
-      if (key === 'q') {
         e.preventDefault();
-        gameOver = true;
-        drawBoard();
-        return;
-      }
+        e.stopPropagation();
 
-      let moved = false;
-      if (key === 'arrowup' || key === 'w') {
-        e.preventDefault();
-        if (cursorY > 0) { cursorY--; moved = true; }
-      } else if (key === 'arrowdown' || key === 's') {
-        e.preventDefault();
-        if (cursorY < rows - 1) { cursorY++; moved = true; }
-      } else if (key === 'arrowleft' || key === 'a') {
-        e.preventDefault();
-        if (cursorX > 0) { cursorX--; moved = true; }
-      } else if (key === 'arrowright' || key === 'd') {
-        e.preventDefault();
-        if (cursorX < cols - 1) { cursorX++; moved = true; }
-      } else if (e.key === ' ' || key === 'enter') {
-        e.preventDefault();
-        revealCell(cursorX, cursorY);
-        moved = true;
-      } else if (key === 'f' || key === 'm') {
-        e.preventDefault();
-        toggleFlag(cursorX, cursorY);
-        moved = true;
-      }
+        const x = parseInt(cellElement.getAttribute('data-x'), 10);
+        const y = parseInt(cellElement.getAttribute('data-y'), 10);
+        cursorX = x;
+        cursorY = y;
 
-      if (moved) {
-        drawBoard();
-      }
-    };
-    document.addEventListener('keydown', keyHandler);
-
-    // Mouse handlers (Event Delegation on Board Container)
-    const handleMouseClick = (e) => {
-      if (gameOver) return;
-      const cellElement = e.target.closest('.ms-cell');
-      if (!cellElement) return;
-
-      const x = parseInt(cellElement.getAttribute('data-x'), 10);
-      const y = parseInt(cellElement.getAttribute('data-y'), 10);
-      cursorX = x;
-      cursorY = y;
-
-      e.preventDefault();
-
-      if (touchFlagMode) {
         toggleFlag(x, y);
-      } else {
-        revealCell(x, y);
-      }
-      drawBoard();
-    };
+        drawBoard();
+      };
 
-    const handleMouseRightClick = (e) => {
-      if (gameOver) return;
-      const cellElement = e.target.closest('.ms-cell');
-      if (!cellElement) return;
-
-      e.preventDefault();
-      e.stopPropagation();
-
-      const x = parseInt(cellElement.getAttribute('data-x'), 10);
-      const y = parseInt(cellElement.getAttribute('data-y'), 10);
-      cursorX = x;
-      cursorY = y;
-
-      toggleFlag(x, y);
-      drawBoard();
-    };
-
-    boardContainer.addEventListener('click', handleMouseClick);
-    boardContainer.addEventListener('contextmenu', handleMouseRightClick);
-
-    // Main Game Loop awaiter
-    await new Promise((resolve) => {
-      const checker = setInterval(() => {
-        if (gameOver || shell.abortSignal) {
-          clearInterval(checker);
-          clearInterval(timerInterval);
-          resolve();
-        }
-      }, 100);
+      boardContainer.addEventListener('click', handleMouseClick);
+      boardContainer.addEventListener('contextmenu', handleMouseRightClick);
     });
-
-    // Cleanup
-    document.removeEventListener('keydown', keyHandler);
-    boardContainer.removeEventListener('click', handleMouseClick);
-    boardContainer.removeEventListener('contextmenu', handleMouseRightClick);
-    shell.loginState = 'LOGGED_IN';
-
-    // Print final score/outcome
-    if (gameWon) {
-      shell.print(`Victory! Board cleared in ${elapsedSeconds} seconds.`, 'color-green');
-
-      if (difficultyPreset && difficultyPreset !== 'custom') {
-        const bestTimeKey = `minesweeper_best_${difficultyPreset}`;
-        const previousBest = localStorage.getItem(bestTimeKey);
-        if (!previousBest || elapsedSeconds < parseInt(previousBest, 10)) {
-          localStorage.setItem(bestTimeKey, elapsedSeconds.toString());
-          shell.print(`NEW BEST TIME for ${difficultyPreset.toUpperCase()}: ${elapsedSeconds} seconds!`, 'color-accent');
-        }
-      }
-    } else if (shell.abortSignal) {
-      shell.print('Minesweeper interrupted.', 'color-dim');
-    } else {
-      shell.print('Game Over! You triggered a mine.', 'color-error');
-    }
   }
 };

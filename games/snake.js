@@ -51,7 +51,7 @@ export const snake = {
         { x: 8, y: 14 }
       ],
       dir: 'RIGHT',
-      nextDir: 'RIGHT',
+      inputQueue: [],
       food: { x: 25, y: 14 },
       score: 0,
       gameOver: false
@@ -79,29 +79,36 @@ export const snake = {
       let board = '';
       board += '┌' + '─'.repeat(width) + '┐\n';
 
+      // 1. Create a 2D matrix representing the screen
+      const screen = Array.from({ length: height }, () => Array(width).fill(null));
+
+      // 2. Mark food
+      if (gameState.food.x >= 0 && gameState.food.x < width && gameState.food.y >= 0 && gameState.food.y < height) {
+        screen[gameState.food.y][gameState.food.x] = 'food';
+      }
+
+      // 3. Mark body
+      for (let i = 1; i < gameState.snake.length; i++) {
+        const segment = gameState.snake[i];
+        if (segment.x >= 0 && segment.x < width && segment.y >= 0 && segment.y < height) {
+          screen[segment.y][segment.x] = 'body';
+        }
+      }
+
+      // 4. Mark head
+      const head = gameState.snake[0];
+      if (head.x >= 0 && head.x < width && head.y >= 0 && head.y < height) {
+        screen[head.y][head.x] = 'head';
+      }
+
       for (let r = 0; r < height / 2; r++) {
         let line = '│';
         const topY = 2 * r;
         const bottomY = 2 * r + 1;
 
         for (let x = 0; x < width; x++) {
-          const isTopSnake = gameState.snake.some(segment => segment.x === x && segment.y === topY);
-          const isBottomSnake = gameState.snake.some(segment => segment.x === x && segment.y === bottomY);
-          const isTopFood = (gameState.food.x === x && gameState.food.y === topY);
-          const isBottomFood = (gameState.food.x === x && gameState.food.y === bottomY);
-
-          const topHead = (gameState.snake[0].x === x && gameState.snake[0].y === topY);
-          const bottomHead = (gameState.snake[0].x === x && gameState.snake[0].y === bottomY);
-
-          let topType = null;
-          if (topHead) topType = 'head';
-          else if (isTopSnake) topType = 'body';
-          else if (isTopFood) topType = 'food';
-
-          let bottomType = null;
-          if (bottomHead) bottomType = 'head';
-          else if (isBottomSnake) bottomType = 'body';
-          else if (isBottomFood) bottomType = 'food';
+          const topType = screen[topY][x];
+          const bottomType = screen[bottomY][x];
 
           let cellChar = ' ';
           if (topType && bottomType) {
@@ -148,25 +155,37 @@ export const snake = {
     const keyHandler = (e) => {
       if (shell.loginState === 'GAME') {
         const key = e.key.toLowerCase();
-        if (key === 'q') {
+        
+        // Prevent default scrolling for game controls
+        if (['arrowup', 'w', 'arrowdown', 's', 'arrowleft', 'a', 'arrowright', 'd', ' '].includes(key)) {
           e.preventDefault();
+        }
+
+        if (key === 'q') {
           gameState.gameOver = true;
           return;
         }
 
-        // Avoid turning 180 degrees instantly
-        if ((key === 'arrowup' || key === 'w') && gameState.dir !== 'DOWN') {
-          e.preventDefault();
-          gameState.nextDir = 'UP';
-        } else if ((key === 'arrowdown' || key === 's') && gameState.dir !== 'UP') {
-          e.preventDefault();
-          gameState.nextDir = 'DOWN';
-        } else if ((key === 'arrowleft' || key === 'a') && gameState.dir !== 'RIGHT') {
-          e.preventDefault();
-          gameState.nextDir = 'LEFT';
-        } else if ((key === 'arrowright' || key === 'd') && gameState.dir !== 'LEFT') {
-          e.preventDefault();
-          gameState.nextDir = 'RIGHT';
+        let desiredDir = null;
+        if (key === 'arrowup' || key === 'w') {
+          desiredDir = 'UP';
+        } else if (key === 'arrowdown' || key === 's') {
+          desiredDir = 'DOWN';
+        } else if (key === 'arrowleft' || key === 'a') {
+          desiredDir = 'LEFT';
+        } else if (key === 'arrowright' || key === 'd') {
+          desiredDir = 'RIGHT';
+        }
+
+        if (desiredDir) {
+          const lastQueued = gameState.inputQueue.length > 0 ? gameState.inputQueue[gameState.inputQueue.length - 1] : gameState.dir;
+          const opposites = { UP: 'DOWN', DOWN: 'UP', LEFT: 'RIGHT', RIGHT: 'LEFT' };
+          
+          if (desiredDir !== lastQueued && desiredDir !== opposites[lastQueued]) {
+            if (gameState.inputQueue.length < 2) {
+              gameState.inputQueue.push(desiredDir);
+            }
+          }
         }
       }
     };
@@ -181,7 +200,10 @@ export const snake = {
           return;
         }
 
-        gameState.dir = gameState.nextDir;
+        if (gameState.inputQueue.length > 0) {
+          gameState.dir = gameState.inputQueue.shift();
+        }
+
         const head = { ...gameState.snake[0] };
 
         // Move head
@@ -199,6 +221,13 @@ export const snake = {
           return;
         }
 
+        const eatsFood = (head.x === gameState.food.x && head.y === gameState.food.y);
+
+        if (!eatsFood) {
+          // Remove tail before self-collision check so snake can follow its tail
+          gameState.snake.pop();
+        }
+
         // Collision check - self body
         if (gameState.snake.some(segment => segment.x === head.x && segment.y === head.y)) {
           gameState.gameOver = true;
@@ -210,13 +239,10 @@ export const snake = {
         gameState.snake.unshift(head);
 
         // Check if food eaten
-        if (head.x === gameState.food.x && head.y === gameState.food.y) {
+        if (eatsFood) {
           gameState.score += 10;
           audio.playSnakeEat();
           generateFood();
-        } else {
-          // Remove tail
-          gameState.snake.pop();
         }
 
         drawSnake();
