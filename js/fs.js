@@ -2,7 +2,7 @@ export const virtualFS = {
   "about.md": "file",
   "contact.md": "file",
   "archive": {
-    "index.html": "file"
+    // ?????
   },
   "projects.md": "file",
   "sokoban": {
