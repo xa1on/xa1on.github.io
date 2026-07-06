@@ -64,7 +64,13 @@ const parseInline = (line) => {
 
   let processed = sanitized;
   processed = processed.replace(/\*\*(.*?)\*\*/g, '<span class="color-accent">$1</span>');
-  processed = processed.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="color-link" target="_blank">$1</a>');
+  processed = processed.replace(/\[(.*?)\]\((.*?)\)/g, (match, text, href) => {
+    const cleanHref = href.trim();
+    if (/^javascript:/i.test(cleanHref)) {
+      return `<span class="color-text" title="Blocked: javascript link">${text}</span>`;
+    }
+    return `<a href="${cleanHref}" class="color-link" target="_blank">${text}</a>`;
+  });
   processed = processed.replace(/\`(.*?)\`/g, '<span class="color-accent">$1</span>');
   return processed;
 };

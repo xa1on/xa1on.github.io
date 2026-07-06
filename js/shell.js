@@ -1,4 +1,3 @@
-import { resolvePath, getNodeByPath } from './fs.js';
 import { audio } from './audio.js';
 import { parseMarkdown, escapeHTML } from './utils/markdown.js';
 
@@ -32,6 +31,47 @@ function findCommentIndex(str) {
     }
   }
   return -1;
+}
+
+function parseArgs(cmdStr) {
+  const args = [];
+  let current = '';
+  let inDoubleQuote = false;
+  let inSingleQuote = false;
+  let escaped = false;
+
+  for (let i = 0; i < cmdStr.length; i++) {
+    const char = cmdStr[i];
+    if (escaped) {
+      current += char;
+      escaped = false;
+      continue;
+    }
+    if (char === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (char === '"' && !inSingleQuote) {
+      inDoubleQuote = !inDoubleQuote;
+      continue;
+    }
+    if (char === "'" && !inDoubleQuote) {
+      inSingleQuote = !inSingleQuote;
+      continue;
+    }
+    if (/\s/.test(char) && !inDoubleQuote && !inSingleQuote) {
+      if (current !== '') {
+        args.push(current);
+        current = '';
+      }
+    } else {
+      current += char;
+    }
+  }
+  if (current !== '') {
+    args.push(current);
+  }
+  return args;
 }
 
 export class Shell {
@@ -99,7 +139,7 @@ export class Shell {
                 const childCount = this.output.children.length;
                 const maxGlowLines = 85;
                 const startIndex = Math.max(0, childCount - maxGlowLines);
-                
+
                 // 1. Clear and populate the inactive layer
                 nextActive.innerHTML = '';
                 const fragment = document.createDocumentFragment();
@@ -125,7 +165,7 @@ export class Shell {
         subtree: true,
         characterData: true
       });
-      
+
       // Initial sync on first active backdrop
       const initialActive = this.glowBackdrops[0];
       if (initialActive) {
@@ -518,7 +558,8 @@ export class Shell {
 
     if (commandPart === '') return;
 
-    const parts = commandPart.split(/\s+/);
+    const parts = parseArgs(commandPart);
+    if (parts.length === 0) return;
     const command = parts[0].toLowerCase();
     const args = parts.slice(1);
 
@@ -697,7 +738,15 @@ export class Shell {
     }
   }
 
-  startConnection() {
+  async typeCommand(text, speed = 50) {
+    for (let i = 0; i < text.length; i++) {
+      this.updateInputDisplay(text.slice(0, i + 1));
+      audio.playKeyclick(text[i]);
+      await new Promise(resolve => setTimeout(resolve, speed));
+    }
+  }
+
+  async startConnection() {
     this.loginState = 'BOOTING';
     this.input.disabled = true;
     this.promptPrefix.innerHTML = '<span class="color-accent">C:\\Users\\cli&gt;</span>';
@@ -706,49 +755,28 @@ export class Shell {
     audio.startHum();
 
     const cmdText = 'ssh ' + this.currentUsername + '@chenghao.li';
-    let charIndex = 0;
+    await this.typeCommand(cmdText, 50);
 
-    const typeEffect = setInterval(() => {
-      this.updateInputDisplay(cmdText.slice(0, charIndex + 1));
-      audio.playKeyclick(cmdText[charIndex]);
-      charIndex++;
-      if (charIndex >= cmdText.length) {
-        clearInterval(typeEffect);
+    await new Promise(resolve => setTimeout(resolve, 400));
+    this.print('<span class="color-accent">C:\\Users\\cli&gt;</span> ssh ' + this.currentUsername + '@chenghao.li');
+    this.inputDisplay.textContent = '';
 
-        setTimeout(async () => {
-          this.print('<span class="color-accent">C:\\Users\\cli&gt;</span> ssh ' + this.currentUsername + '@chenghao.li');
-          this.inputDisplay.textContent = '';
+    audio.playBootChime();
+    if (this.onConnect) {
+      await this.onConnect(this);
+    }
+    this.promptPrefix.innerHTML = `<span class="color-accent"><span class="red">${this.currentUsername}</span>@chenghao.li</span>:<span class="color-dir">~</span>#`;
 
-          audio.playBootChime();
-          if (this.onConnect) {
-            await this.onConnect(this);
-          }
-          this.promptPrefix.innerHTML = `<span class="color-accent"><span class="red">${this.currentUsername}</span>@chenghao.li</span>:<span class="color-dir">~</span>#`;
+    await new Promise(resolve => setTimeout(resolve, 600));
 
-          setTimeout(() => {
-            const lsText = 'ls # click items to navigate, or use cat/cd';
-            let lsIndex = 0;
+    const lsText = 'ls # click items to navigate, or use cat/cd';
+    await this.typeCommand(lsText, 50);
 
-            const lsTypeEffect = setInterval(() => {
-              this.updateInputDisplay(lsText.slice(0, lsIndex + 1));
-              audio.playKeyclick(lsText[lsIndex]);
-              lsIndex++;
-
-              if (lsIndex >= lsText.length) {
-                clearInterval(lsTypeEffect);
-
-                setTimeout(async () => {
-                  this.inputDisplay.textContent = '';
-                  this.loginState = 'LOGGED_IN';
-                  this.input.disabled = false;
-                  audio.fadeHumQuiet();
-                  await this.handleInputSubmit('ls # click items to navigate, or use cat/cd');
-                }, 400);
-              }
-            }, 50);
-          }, 600);
-        }, 400);
-      }
-    }, 50);
+    await new Promise(resolve => setTimeout(resolve, 400));
+    this.inputDisplay.textContent = '';
+    this.loginState = 'LOGGED_IN';
+    this.input.disabled = false;
+    audio.fadeHumQuiet();
+    await this.handleInputSubmit('ls # click items to navigate, or use cat/cd');
   }
 }

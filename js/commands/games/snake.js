@@ -160,7 +160,7 @@ export const snake = {
     const keyHandler = (e) => {
       if (shell.loginState === 'GAME') {
         const key = e.key.toLowerCase();
-        
+
         // Prevent default scrolling for game controls
         if (['arrowup', 'w', 'arrowdown', 's', 'arrowleft', 'a', 'arrowright', 'd', ' '].includes(key)) {
           e.preventDefault();
@@ -185,7 +185,7 @@ export const snake = {
         if (desiredDir) {
           const lastQueued = gameState.inputQueue.length > 0 ? gameState.inputQueue[gameState.inputQueue.length - 1] : gameState.dir;
           const opposites = { UP: 'DOWN', DOWN: 'UP', LEFT: 'RIGHT', RIGHT: 'LEFT' };
-          
+
           if (desiredDir !== lastQueued && desiredDir !== opposites[lastQueued]) {
             if (gameState.inputQueue.length < 2) {
               gameState.inputQueue.push(desiredDir);

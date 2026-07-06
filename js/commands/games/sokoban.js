@@ -232,7 +232,7 @@ export const sokoban = {
         // If not custom level, transition to next level
         if (!isCustom && currentLevelIndex < maxBuiltinLevels) {
           shell.print(`Loading Level ${currentLevelIndex + 1}...`, 'color-blue');
-          
+
           // Disable keys temporarily during transition
           document.removeEventListener('keydown', keyHandler);
 
@@ -295,7 +295,7 @@ export const sokoban = {
           mapState.boxGrid[boxNextY][boxNextX] = true;
           pushCount++;
           audio.playBeep(80, 40, 0.15, 'triangle', 0.2);
- 
+
           // If target filled
           if (boxNextStatic === '.') {
             audio.playMelody([

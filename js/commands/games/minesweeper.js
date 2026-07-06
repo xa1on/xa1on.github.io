@@ -145,7 +145,7 @@ export const minesweeper = {
           const y = Math.floor(Math.random() * rows);
 
           // Safe zone constraint: 3x3 unless board is too small, in which case just the clicked cell is safe
-          const isSafe = useReducedSafeZone 
+          const isSafe = useReducedSafeZone
             ? (x === safeX && y === safeY)
             : (Math.abs(x - safeX) <= 1 && Math.abs(y - safeY) <= 1);
 

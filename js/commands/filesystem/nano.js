@@ -38,7 +38,7 @@ class NanoEditor extends BaseEditor {
     this.textarea.addEventListener('keydown', (e) => {
       const val = this.textarea.value;
       const key = e.key;
-      
+
       if (key === ' ' || key === 'Enter' || (e.ctrlKey && (key === 'v' || key === 'u' || key === 'k'))) {
         this.pushUndoState(val);
       } else if (key === 'Backspace') {
@@ -87,13 +87,13 @@ class NanoEditor extends BaseEditor {
     if (this.undoStack.length > 0) {
       const currentVal = this.textarea.value;
       const state = this.undoStack.pop();
-      
+
       this.redoStack.push({
         value: currentVal,
         selStart: this.textarea.selectionStart,
         selEnd: this.textarea.selectionEnd
       });
-      
+
       this.textarea.value = state.value;
       this.textarea.selectionStart = state.selStart;
       this.textarea.selectionEnd = state.selEnd;
@@ -108,13 +108,13 @@ class NanoEditor extends BaseEditor {
     if (this.redoStack.length > 0) {
       const currentVal = this.textarea.value;
       const state = this.redoStack.pop();
-      
+
       this.undoStack.push({
         value: currentVal,
         selStart: this.textarea.selectionStart,
         selEnd: this.textarea.selectionEnd
       });
-      
+
       this.textarea.value = state.value;
       this.textarea.selectionStart = state.selStart;
       this.textarea.selectionEnd = state.selEnd;
@@ -145,7 +145,7 @@ class NanoEditor extends BaseEditor {
           pasteText = systemText;
         }
       }
-    } catch (err) {}
+    } catch (err) { }
 
     if (!pasteText) return;
 
@@ -261,7 +261,7 @@ class NanoEditor extends BaseEditor {
       const val = this.textarea.value;
       const selStart = this.textarea.selectionStart;
       const selEnd = this.textarea.selectionEnd;
-      
+
       this.pushUndoState(val);
 
       if (selStart !== selEnd) {
@@ -269,7 +269,7 @@ class NanoEditor extends BaseEditor {
         const e = Math.max(selStart, selEnd);
         const cutText = val.slice(s, e);
         await this.writeToClipboard(cutText);
-        
+
         this.textarea.value = val.slice(0, s) + val.slice(e);
         this.textarea.selectionStart = this.textarea.selectionEnd = s;
         this.lastCommandWasCut = false;
@@ -279,7 +279,7 @@ class NanoEditor extends BaseEditor {
         const lines = val.split('\n');
         let currentIdx = 0;
         let curLine = 0;
-        
+
         for (let i = 0; i < lines.length; i++) {
           const lineEndIdx = currentIdx + lines[i].length;
           if (selStart >= currentIdx && selStart <= lineEndIdx + 1) {
@@ -296,7 +296,7 @@ class NanoEditor extends BaseEditor {
             if (navigator.clipboard && navigator.clipboard.writeText) {
               await navigator.clipboard.writeText(this.cutBuffer);
             }
-          } catch (err) {}
+          } catch (err) { }
         } else {
           await this.writeToClipboard(cutText);
         }
@@ -304,9 +304,9 @@ class NanoEditor extends BaseEditor {
 
         lines.splice(curLine, 1);
         if (lines.length === 0) lines.push('');
-        
+
         this.textarea.value = lines.join('\n');
-        
+
         let newIdx = 0;
         for (let i = 0; i < curLine && i < lines.length; i++) {
           newIdx += lines[i].length + 1;
@@ -552,10 +552,10 @@ class NanoEditor extends BaseEditor {
         </div>
       `;
     } else {
-      const statusLineHtml = this.statusMessage 
-        ? `<div class="nano-status color-accent">${this.statusMessage}</div>` 
+      const statusLineHtml = this.statusMessage
+        ? `<div class="nano-status color-accent">${this.statusMessage}</div>`
         : '';
-      
+
       expectedFooterHtml = `
         ${statusLineHtml}
         <div class="nano-shortcuts-grid">

@@ -1,5 +1,4 @@
 const fs = require('fs');
-const path = require('crypto');
 const crypto = require('crypto');
 const pathModule = require('path');
 
@@ -96,9 +95,16 @@ while (!stable && iterations < MAX_ITERATIONS) {
   }
 }
 
-// Write the fully updated contents to disk
-for (const file of files) {
-  fs.writeFileSync(file, fileContents[file], 'utf8');
-}
+const isCI = process.env.CI || process.env.GITHUB_ACTIONS || process.argv.includes('--write');
 
-console.log(`Cache busted successfully using content hashes in ${iterations} passes.`);
+if (isCI) {
+  // Write the fully updated contents to disk
+  for (const file of files) {
+    fs.writeFileSync(file, fileContents[file], 'utf8');
+  }
+  console.log(`Cache busted successfully using content hashes in ${iterations} passes.`);
+} else {
+  console.log(`[Dry Run] Cache buster calculated content hashes in ${iterations} passes.`);
+  console.log(`Local run detected: files were NOT modified on disk.`);
+  console.log(`To write these changes to your local files, run: node scripts/cache_buster.js --write`);
+}

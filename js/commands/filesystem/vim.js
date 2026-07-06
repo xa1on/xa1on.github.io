@@ -56,16 +56,16 @@ class VimEditor extends BaseEditor {
     const { rawLines, curLine, curCol } = this.getLinesAndCursor();
     const lineLen = rawLines[curLine] ? rawLines[curLine].length : 0;
     let newCol = curCol + dir;
-    
+
     const maxCol = allowLineEnd ? lineLen : Math.max(0, lineLen - 1);
     newCol = Math.max(0, Math.min(maxCol, newCol));
-    
+
     let newIdx = 0;
     for (let i = 0; i < curLine; i++) {
       newIdx += rawLines[i].length + 1;
     }
     newIdx += newCol;
-    
+
     this.textarea.selectionStart = newIdx;
     this.textarea.selectionEnd = newIdx;
   }
@@ -91,14 +91,14 @@ class VimEditor extends BaseEditor {
   moveWord(dir) {
     const val = this.textarea.value;
     let idx = this.textarea.selectionStart;
-    
+
     const isAlphanumeric = (c) => /[a-zA-Z0-9_]/.test(c);
     const isWhitespace = (c) => /\s/.test(c);
-    
+
     if (dir === 1) { // w
       if (idx >= val.length) return;
       const startClass = isAlphanumeric(val[idx]) ? 1 : (isWhitespace(val[idx]) ? 0 : 2);
-      
+
       if (startClass !== 0) {
         while (idx < val.length) {
           const curClass = isAlphanumeric(val[idx]) ? 1 : (isWhitespace(val[idx]) ? 0 : 2);
@@ -123,7 +123,7 @@ class VimEditor extends BaseEditor {
         idx--;
       }
     }
-    
+
     this.textarea.selectionStart = this.textarea.selectionEnd = idx;
   }
 
@@ -317,7 +317,7 @@ class VimEditor extends BaseEditor {
         if (val.length > 0 && idx < val.length && val[idx] !== '\n') {
           this.pushUndoState();
           this.textarea.value = val.slice(0, idx) + val.slice(idx + 1);
-          
+
           const newVal = this.textarea.value;
           let newIdx = idx;
           if ((newVal[newIdx] === '\n' || newIdx === newVal.length) && newIdx > 0 && newVal[newIdx - 1] !== '\n') {
@@ -373,10 +373,10 @@ class VimEditor extends BaseEditor {
         const { rawLines, curLine, curCol } = this.getLinesAndCursor();
         const lineLen = rawLines[curLine] ? rawLines[curLine].length : 0;
         const charsToDelete = lineLen - curCol;
-        
+
         this.textarea.value = val.slice(0, selStart) + val.slice(selStart + charsToDelete);
         this.textarea.selectionStart = this.textarea.selectionEnd = selStart;
-        
+
         if (key === 'C') {
           this.mode = 'INSERT';
           this.textBeforeInsert = this.textarea.value;
@@ -437,12 +437,12 @@ class VimEditor extends BaseEditor {
         }
         this.textBeforeInsert = null;
         this.mode = 'NORMAL';
-        
+
         const { curCol } = this.getLinesAndCursor();
         if (curCol > 0) {
           this.moveCursor(-1);
         }
-        
+
         this.draw();
       }
       return;
@@ -632,7 +632,7 @@ class VimEditor extends BaseEditor {
 
     const statusLeftEl = statusBarEl.querySelector('.vim-status-left');
     const statusRightEl = statusBarEl.querySelector('.vim-status-right');
-    
+
     if (statusLeftEl && statusLeftEl.innerHTML !== fileText) {
       statusLeftEl.innerHTML = fileText;
     }
@@ -647,14 +647,14 @@ class VimEditor extends BaseEditor {
 
 function highlightSearchMatches(htmlStr, query) {
   if (!query) return htmlStr;
-  
+
   const htmlEscapedQuery = query
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
   const regexEscaped = htmlEscapedQuery.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
   const regex = new RegExp(regexEscaped, 'gi');
-  
+
   const parts = htmlStr.split(/(<[^>]+>)/g);
   for (let i = 0; i < parts.length; i += 2) {
     if (parts[i]) {

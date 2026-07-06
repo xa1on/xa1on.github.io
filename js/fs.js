@@ -13,20 +13,7 @@ export const virtualFS = {
   }
 };
 
-function getFilePaths(node, prefix = '') {
-  let paths = [];
-  for (const [key, value] of Object.entries(node)) {
-    const path = `${prefix}/${key}`;
-    if (value && typeof value === 'object') {
-      paths = paths.concat(getFilePaths(value, path));
-    } else if (value === 'file') {
-      paths.push(path);
-    }
-  }
-  return paths;
-}
 
-const BUILTIN_PATHS = getFilePaths(virtualFS);
 
 function deepMerge(target, source) {
   for (const key of Object.keys(source)) {
@@ -129,8 +116,7 @@ export class FileSystem {
   }
 
   isBuiltInPath(pathArr) {
-    const pathStr = '/' + pathArr.join('/');
-    return BUILTIN_PATHS.includes(pathStr);
+    return getNodeByPath(virtualFS, pathArr) !== null;
   }
 
   async readFile(pathArr) {
