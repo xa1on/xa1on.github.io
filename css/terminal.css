@@ -239,6 +239,11 @@
   word-break: break-all;
   display: inline;
   min-height: 1.2em;
+  cursor: text;
+}
+
+.char-cell {
+  cursor: text;
 }
 
 .terminal-cursor {

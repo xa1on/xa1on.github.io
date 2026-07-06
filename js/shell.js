@@ -74,6 +74,25 @@ export class Shell {
       }
     });
 
+    this.inputLine.addEventListener('click', (e) => {
+      const charCell = e.target.closest('.char-cell');
+      if (charCell) {
+        e.stopPropagation();
+        const idx = parseInt(charCell.getAttribute('data-idx'), 10);
+        this.input.selectionStart = this.input.selectionEnd = idx;
+        syncCursor();
+        this.focus();
+      } else {
+        const isInteractive = e.target.closest('a') || e.target.closest('button') || e.target.closest('.cmd-link');
+        if (!isInteractive) {
+          e.stopPropagation();
+          this.input.selectionStart = this.input.selectionEnd = this.input.value.length;
+          syncCursor();
+          this.focus();
+        }
+      }
+    });
+
     // Special keyboard listeners (Enter, Up, Down, Tab)
     this.input.addEventListener('keydown', async (e) => {
       if (this.loginState === 'GAME' || this.loginState === 'BOOTING') {
@@ -238,6 +257,13 @@ export class Shell {
     const selStart = text === this.input.value ? (this.input.selectionStart || 0) : text.length;
     const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+    const wrapCharacters = (str, startIdx) => {
+      return str.split('').map((char, i) => {
+        const displayChar = char === '\n' ? '\n' : (char === ' ' ? '\u00A0' : char);
+        return `<span class="char-cell" data-idx="${startIdx + i}">${escapeHTML(displayChar)}</span>`;
+      }).join('');
+    };
+
     const getCursorHTML = (char) => {
       const displayChar = (char === '' || char === ' ' || char === '\n') ? '\u00A0' : char;
       return `<span class="terminal-cursor" id="cursor">${escapeHTML(displayChar)}</span>`;
@@ -250,7 +276,7 @@ export class Shell {
       const left = text.slice(0, selStart);
       const charUnder = text.slice(selStart, selStart + 1);
       const right = text.slice(selStart + 1);
-      this.inputDisplay.innerHTML = escapeHTML(left) + getCursorHTML(charUnder) + escapeHTML(right);
+      this.inputDisplay.innerHTML = wrapCharacters(left, 0) + getCursorHTML(charUnder) + wrapCharacters(right, selStart + 1);
     } else {
       // Render standard text and dim comments, embedding cursor appropriately
       const commentMatch = text.match(/(?:\s|^)#.*/);
@@ -263,19 +289,19 @@ export class Shell {
           const left = commandPart.slice(0, selStart);
           const charUnder = commandPart.slice(selStart, selStart + 1);
           const right = commandPart.slice(selStart + 1);
-          this.inputDisplay.innerHTML = escapeHTML(left) + getCursorHTML(charUnder) + escapeHTML(right) + `<span class="color-dim">${escapeHTML(commentPart)}</span>`;
+          this.inputDisplay.innerHTML = wrapCharacters(left, 0) + getCursorHTML(charUnder) + wrapCharacters(right, selStart + 1) + `<span class="color-dim">${wrapCharacters(commentPart, commentIdx)}</span>`;
         } else {
           const localSel = selStart - commentIdx;
           const left = commentPart.slice(0, localSel);
           const charUnder = commentPart.slice(localSel, localSel + 1);
           const right = commentPart.slice(localSel + 1);
-          this.inputDisplay.innerHTML = escapeHTML(commandPart) + `<span class="color-dim">${escapeHTML(left)}${getCursorHTML(charUnder)}${escapeHTML(right)}</span>`;
+          this.inputDisplay.innerHTML = wrapCharacters(commandPart, 0) + `<span class="color-dim">${wrapCharacters(left, commentIdx)}${getCursorHTML(charUnder)}${wrapCharacters(right, selStart + 1)}</span>`;
         }
       } else {
         const left = text.slice(0, selStart);
         const charUnder = text.slice(selStart, selStart + 1);
         const right = text.slice(selStart + 1);
-        this.inputDisplay.innerHTML = escapeHTML(left) + getCursorHTML(charUnder) + escapeHTML(right);
+        this.inputDisplay.innerHTML = wrapCharacters(left, 0) + getCursorHTML(charUnder) + wrapCharacters(right, selStart + 1);
       }
     }
 
