@@ -53,19 +53,25 @@ export class Shell {
       this.glowBackdrop.innerHTML = this.output.innerHTML;
     }
 
-    // Input visual mirroring
-    this.input.addEventListener('input', (e) => {
-      this.updateInputDisplay(e.target.value);
-    });
-
+    // Input visual mirroring and cursor synchronization throttled to requestAnimationFrame
+    let rafId = null;
     const syncCursor = () => {
-      this.updateInputDisplay(this.input.value);
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        this.updateInputDisplay(this.input.value);
+        rafId = null;
+      });
     };
+
+    this.input.addEventListener('input', syncCursor);
     this.input.addEventListener('keyup', syncCursor);
     this.input.addEventListener('click', syncCursor);
     this.input.addEventListener('focus', syncCursor);
-    this.input.addEventListener('keydown', () => {
-      setTimeout(syncCursor, 0);
+    this.input.addEventListener('keydown', (e) => {
+      const cursorKeys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Backspace', 'Delete'];
+      if (cursorKeys.includes(e.key)) {
+        syncCursor();
+      }
     });
 
     // Special keyboard listeners (Enter, Up, Down, Tab)
