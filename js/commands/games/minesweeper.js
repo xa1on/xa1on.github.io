@@ -232,7 +232,7 @@ export const minesweeper = {
 
         if (cell.isMine) {
           gameOver = true;
-          audio.playMinesweeperExplosion();
+          audio.playBeep(150, 30, 0.5, 'sawtooth', 0.25);
           // Reveal all mines
           for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
@@ -244,7 +244,7 @@ export const minesweeper = {
           return;
         }
 
-        audio.playPongHit();
+        audio.playBeep(600, 300, 0.08, 'square', 0.15);
 
         // Zero propagation (Iterative to avoid stack overflow)
         if (cell.neighborMines === 0) {
@@ -272,7 +272,12 @@ export const minesweeper = {
         if (checkWinCondition()) {
           gameWon = true;
           gameOver = true;
-          audio.playPongScore();
+          audio.playMelody([
+            { f: 523.25, dur: 0.06, delay: 0.00 },
+            { f: 659.25, dur: 0.06, delay: 0.05 },
+            { f: 783.99, dur: 0.06, delay: 0.10 },
+            { f: 1046.50, dur: 0.06, delay: 0.15 }
+          ], 'square', 0.1);
           drawBoard();
           finishGame();
         }
@@ -285,7 +290,7 @@ export const minesweeper = {
 
         cell.isFlagged = !cell.isFlagged;
         flagsCount += cell.isFlagged ? 1 : -1;
-        audio.playMinesweeperFlag();
+        audio.playBeep(880, 880, 0.08, 'sine', 0.15);
       }
 
       function drawBoard() {

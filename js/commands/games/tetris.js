@@ -337,9 +337,22 @@ export const tetris = {
           const newLevel = Math.floor(linesCleared / 10) + 1;
           if (newLevel > level) {
             level = newLevel;
-            audio.playTetrisLevelUp();
+            audio.playMelody([
+              { f: 523.25, dur: 0.08, delay: 0.00 },
+              { f: 659.25, dur: 0.08, delay: 0.08 },
+              { f: 783.99, dur: 0.08, delay: 0.16 },
+              { f: 1046.50, dur: 0.08, delay: 0.24 },
+              { f: 1318.51, dur: 0.40, delay: 0.32 }
+            ], 'square', 0.12);
           } else {
-            audio.playTetrisLine();
+            audio.playMelody([
+              { f: 523.25, endF: 523.25 * 1.05, dur: 0.05, delay: 0.00 },
+              { f: 659.25, endF: 659.25 * 1.05, dur: 0.05, delay: 0.04 },
+              { f: 783.99, endF: 783.99 * 1.05, dur: 0.05, delay: 0.08 },
+              { f: 1046.50, endF: 1046.50 * 1.05, dur: 0.05, delay: 0.12 },
+              { f: 1318.51, endF: 1318.51 * 1.05, dur: 0.05, delay: 0.16 },
+              { f: 1567.98, endF: 1567.98 * 1.05, dur: 0.05, delay: 0.20 }
+            ], 'square', 0.1);
           }
         }
       }
@@ -352,7 +365,7 @@ export const tetris = {
           activePieceY += 0.5;
         } else {
           mergePiece();
-          audio.playTetrisLock();
+          audio.playBeep(90, 50, 0.1, 'triangle', 0.2);
           clearRows();
 
           // Spawn next piece
@@ -365,7 +378,12 @@ export const tetris = {
           // Check immediate spawn collision (Game Over)
           if (checkCollision(activePiece.matrix, activePieceX, activePieceY)) {
             gameOver = true;
-            audio.playTetrisGameOver();
+            audio.playMelody([
+              { f: 261.63, dur: 0.18, delay: 0.00 },
+              { f: 246.94, dur: 0.18, delay: 0.18 },
+              { f: 233.08, dur: 0.18, delay: 0.36 },
+              { f: 220.00, endF: 60, dur: 0.60, delay: 0.54 }
+            ], 'sawtooth', 0.1);
           }
         }
         drawTetris();
@@ -399,14 +417,14 @@ export const tetris = {
             e.preventDefault();
             if (!checkCollision(activePiece.matrix, activePieceX - 1, activePieceY)) {
               activePieceX--;
-              audio.playTetrisMove();
+              audio.playBeep(130, 80, 0.03, 'triangle', 0.15);
               drawTetris();
             }
           } else if (e.key === 'ArrowRight') {
             e.preventDefault();
             if (!checkCollision(activePiece.matrix, activePieceX + 1, activePieceY)) {
               activePieceX++;
-              audio.playTetrisMove();
+              audio.playBeep(130, 80, 0.03, 'triangle', 0.15);
               drawTetris();
             }
           } else if (e.key === 'ArrowDown') {
@@ -414,7 +432,7 @@ export const tetris = {
             if (!checkCollision(activePiece.matrix, activePieceX, activePieceY + 0.5)) {
               activePieceY += 0.5;
               score += 1; // Soft drop points
-              audio.playTetrisMove();
+              audio.playBeep(130, 80, 0.03, 'triangle', 0.15);
               drawTetris();
             }
           } else if (e.key === 'ArrowUp') {
@@ -435,7 +453,7 @@ export const tetris = {
               rotatedOk = true;
             }
             if (rotatedOk) {
-              audio.playTetrisRotate();
+              audio.playBeep(300, 450, 0.06, 'triangle', 0.15);
               drawTetris();
             }
           } else if (e.key === ' ') {
@@ -472,11 +490,16 @@ export const tetris = {
               }
               activePieceX = Math.floor((COLS - activePiece.matrix[0].length) / 2);
               activePieceY = 0;
-              audio.playTetrisRotate();
+              audio.playBeep(300, 450, 0.06, 'triangle', 0.15);
               // Check immediate spawn collision (Game Over)
               if (checkCollision(activePiece.matrix, activePieceX, activePieceY)) {
                 gameOver = true;
-                audio.playTetrisGameOver();
+                audio.playMelody([
+                  { f: 261.63, dur: 0.18, delay: 0.00 },
+                  { f: 246.94, dur: 0.18, delay: 0.18 },
+                  { f: 233.08, dur: 0.18, delay: 0.36 },
+                  { f: 220.00, endF: 60, dur: 0.60, delay: 0.54 }
+                ], 'sawtooth', 0.1);
               }
               drawTetris();
             }

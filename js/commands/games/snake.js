@@ -222,7 +222,7 @@ export const snake = {
         // Collision check - boundary walls
         if (head.x < 0 || head.x >= width || head.y < 0 || head.y >= height) {
           gameState.gameOver = true;
-          audio.playSnakeCrash();
+          audio.playBeep(300, 80, 0.25, 'sawtooth', 0.15);
           return;
         }
 
@@ -236,7 +236,7 @@ export const snake = {
         // Collision check - self body
         if (gameState.snake.some(segment => segment.x === head.x && segment.y === head.y)) {
           gameState.gameOver = true;
-          audio.playSnakeCrash();
+          audio.playBeep(300, 80, 0.25, 'sawtooth', 0.15);
           return;
         }
 
@@ -246,7 +246,7 @@ export const snake = {
         // Check if food eaten
         if (eatsFood) {
           gameState.score += 10;
-          audio.playSnakeEat();
+          audio.playBeep(523.25, 1046.50, 0.08, 'triangle', 0.15);
           generateFood();
         }
 

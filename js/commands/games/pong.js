@@ -157,11 +157,11 @@ export const pong = {
         if (pongGame.ballY <= 0) {
           pongGame.ballY = 0;
           pongGame.ballDy = -pongGame.ballDy;
-          audio.playPongWall();
+          audio.playBeep(450, 250, 0.06, 'square', 0.12);
         } else if (pongGame.ballY >= pongGame.boardHeight - 1) {
           pongGame.ballY = pongGame.boardHeight - 1;
           pongGame.ballDy = -pongGame.ballDy;
-          audio.playPongWall();
+          audio.playBeep(450, 250, 0.06, 'square', 0.12);
         }
 
         // Left paddle collision
@@ -173,7 +173,7 @@ export const pong = {
             if (hitPos < 1.0) pongGame.ballDy = -0.4;
             else if (hitPos >= 2.0) pongGame.ballDy = 0.4;
             else pongGame.ballDy = (Math.random() > 0.5 ? 0.2 : -0.2);
-            audio.playPongHit();
+            audio.playBeep(600, 300, 0.08, 'square', 0.15);
           }
         }
 
@@ -186,7 +186,7 @@ export const pong = {
             if (hitPos < 1.0) pongGame.ballDy = -0.4;
             else if (hitPos >= 2.0) pongGame.ballDy = 0.4;
             else pongGame.ballDy = (Math.random() > 0.5 ? 0.2 : -0.2);
-            audio.playPongHit();
+            audio.playBeep(600, 300, 0.08, 'square', 0.15);
           }
         }
 
@@ -211,7 +211,7 @@ export const pong = {
           if (pongGame.cpuScore >= 5) {
             pongGame.gameOver = true;
           } else {
-            audio.playPongMiss();
+            audio.playBeep(220, 80, 0.35, 'sawtooth', 0.12);
             resetBall(1);
           }
         } else if (pongGame.ballX >= pongGame.boardWidth) {
@@ -219,7 +219,12 @@ export const pong = {
           if (pongGame.playerScore >= 5) {
             pongGame.gameOver = true;
           } else {
-            audio.playPongScore();
+            audio.playMelody([
+              { f: 523.25, dur: 0.06, delay: 0.00 },
+              { f: 659.25, dur: 0.06, delay: 0.05 },
+              { f: 783.99, dur: 0.06, delay: 0.10 },
+              { f: 1046.50, dur: 0.06, delay: 0.15 }
+            ], 'square', 0.1);
             resetBall(-1);
           }
         }
@@ -233,10 +238,21 @@ export const pong = {
     shell.loginState = 'LOGGED_IN';
 
     if (pongGame.playerScore >= 5) {
-      audio.playTetrisLevelUp(); // Use Level Up sound as a victory chime
+      audio.playMelody([
+        { f: 523.25, dur: 0.08, delay: 0.00 },
+        { f: 659.25, dur: 0.08, delay: 0.08 },
+        { f: 783.99, dur: 0.08, delay: 0.16 },
+        { f: 1046.50, dur: 0.08, delay: 0.24 },
+        { f: 1318.51, dur: 0.40, delay: 0.32 }
+      ], 'square', 0.12); // Victory chime
       shell.print('Congratulations! You won the match!', 'color-green');
     } else if (pongGame.cpuScore >= 5) {
-      audio.playTetrisGameOver(); // Use Game Over sound as a loss chime
+      audio.playMelody([
+        { f: 261.63, dur: 0.18, delay: 0.00 },
+        { f: 246.94, dur: 0.18, delay: 0.18 },
+        { f: 233.08, dur: 0.18, delay: 0.36 },
+        { f: 220.00, endF: 60, dur: 0.60, delay: 0.54 }
+      ], 'sawtooth', 0.1); // Loss chime
       shell.print('Game Over! The CPU won the match.', 'color-error');
     } else if (shell.abortSignal) {
       shell.print('Pong game interrupted.', 'color-dim');

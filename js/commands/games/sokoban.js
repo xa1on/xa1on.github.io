@@ -212,7 +212,13 @@ export const sokoban = {
       };
 
       const handleLevelComplete = async () => {
-        audio.playTetrisLevelUp(); // victory sound
+        audio.playMelody([
+          { f: 523.25, dur: 0.08, delay: 0.00 },
+          { f: 659.25, dur: 0.08, delay: 0.08 },
+          { f: 783.99, dur: 0.08, delay: 0.16 },
+          { f: 1046.50, dur: 0.08, delay: 0.24 },
+          { f: 1318.51, dur: 0.40, delay: 0.32 }
+        ], 'square', 0.12); // victory sound
         shell.print(`Level complete! Total Moves: ${moveCount}, Pushes: ${pushCount}`, 'color-green');
 
         // Record high score moves
@@ -288,11 +294,14 @@ export const sokoban = {
           mapState.boxGrid[nextY][nextX] = false;
           mapState.boxGrid[boxNextY][boxNextX] = true;
           pushCount++;
-          audio.playSokobanSlide();
-
+          audio.playBeep(80, 40, 0.15, 'triangle', 0.2);
+ 
           // If target filled
           if (boxNextStatic === '.') {
-            audio.playSokobanSuccess();
+            audio.playMelody([
+              { f: 587.33, dur: 0.08, delay: 0.00 },
+              { f: 880.00, dur: 0.15, delay: 0.08 }
+            ], 'triangle', 0.12);
           }
         }
 

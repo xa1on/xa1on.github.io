@@ -231,7 +231,7 @@ export const invaders = {
         // Limit active player bullets
         if (game.bullets.length < 3) {
           game.bullets.push({ x: game.playerX + 2, y: game.playerY - 2 });
-          audio.playInvadersShoot();
+          audio.playBeep(200, 800, 0.06, 'sawtooth', 0.1);
           drawInvaders();
         }
       }
@@ -299,7 +299,7 @@ export const invaders = {
             hitAlien.alive = false;
             game.bullets.splice(i, 1);
             game.score += 30;
-            audio.playInvadersExplosion();
+            audio.playBeep(250, 60, 0.15, 'sawtooth', 0.15);
           }
         }
 
@@ -331,7 +331,12 @@ export const invaders = {
           if (isPlayerHit) {
             game.alienBullets.splice(i, 1);
             game.gameOver = true;
-            audio.playTetrisGameOver();
+            audio.playMelody([
+              { f: 261.63, dur: 0.18, delay: 0.00 },
+              { f: 246.94, dur: 0.18, delay: 0.18 },
+              { f: 233.08, dur: 0.18, delay: 0.36 },
+              { f: 220.00, endF: 60, dur: 0.60, delay: 0.54 }
+            ], 'sawtooth', 0.1);
           }
         }
 
@@ -339,7 +344,12 @@ export const invaders = {
         game.aliens.forEach(al => {
           if (al.alive && al.y >= 26) {
             game.gameOver = true;
-            audio.playTetrisGameOver();
+            audio.playMelody([
+              { f: 261.63, dur: 0.18, delay: 0.00 },
+              { f: 246.94, dur: 0.18, delay: 0.18 },
+              { f: 233.08, dur: 0.18, delay: 0.36 },
+              { f: 220.00, endF: 60, dur: 0.60, delay: 0.54 }
+            ], 'sawtooth', 0.1);
           }
         });
 
@@ -347,7 +357,13 @@ export const invaders = {
         if (!game.aliens.some(al => al.alive)) {
           game.gameOver = true;
           game.gameWon = true;
-          audio.playTetrisLevelUp();
+          audio.playMelody([
+            { f: 523.25, dur: 0.08, delay: 0.00 },
+            { f: 659.25, dur: 0.08, delay: 0.08 },
+            { f: 783.99, dur: 0.08, delay: 0.16 },
+            { f: 1046.50, dur: 0.08, delay: 0.24 },
+            { f: 1318.51, dur: 0.40, delay: 0.32 }
+          ], 'square', 0.12);
         }
 
         drawInvaders();

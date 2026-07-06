@@ -286,6 +286,35 @@ export class FileSystem {
     }
   }
 
+  resolveParentAndName(currentPath, pathStr) {
+    let cleanPathStr = pathStr.trim();
+    while (cleanPathStr.endsWith('/') && cleanPathStr.length > 1) {
+      cleanPathStr = cleanPathStr.slice(0, -1);
+    }
+
+    if (cleanPathStr === '') {
+      return null;
+    }
+
+    let parentPathStr = '';
+    let name = cleanPathStr;
+    const lastSlash = cleanPathStr.lastIndexOf('/');
+    if (lastSlash !== -1) {
+      parentPathStr = cleanPathStr.slice(0, lastSlash);
+      name = cleanPathStr.slice(lastSlash + 1);
+      if (parentPathStr === '') {
+        parentPathStr = '/';
+      }
+    }
+
+    const resolvedParent = this.resolvePath(currentPath, parentPathStr);
+    if (resolvedParent === null) {
+      return null;
+    }
+
+    return { resolvedParent, name };
+  }
+
   resolvePath(currentPath, pathStr) {
     return resolvePath(this.root, currentPath, pathStr);
   }

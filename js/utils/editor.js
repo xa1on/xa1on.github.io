@@ -38,7 +38,7 @@ export class BaseEditor {
     // Hide terminal output & input line
     this.shell.output.style.display = 'none';
     this.shell.inputLine.classList.add('hidden-input-line');
-    
+
     // Prevent terminal body from scrolling
     this.shell.body.style.overflowY = 'hidden';
 
@@ -232,17 +232,17 @@ export class BaseEditor {
         if (curCol === relStart) {
           const charAtCursor = selected.slice(0, 1) || ' ';
           const rest = selected.slice(1);
-          return escape(before) + 
-                 `<span class="terminal-cursor">${escape(charAtCursor)}</span>` + 
-                 `<span class="terminal-selection">${escape(rest)}</span>` + 
-                 escape(after);
+          return escape(before) +
+            `<span class="terminal-cursor">${escape(charAtCursor)}</span>` +
+            `<span class="terminal-selection">${escape(rest)}</span>` +
+            escape(after);
         } else if (curCol === relEnd) {
           const charAtCursor = after.slice(0, 1) || ' ';
           const rest = after.slice(1);
-          return escape(before) + 
-                 `<span class="terminal-selection">${escape(selected)}</span>` + 
-                 `<span class="terminal-cursor">${escape(charAtCursor)}</span>` + 
-                 escape(rest);
+          return escape(before) +
+            `<span class="terminal-selection">${escape(selected)}</span>` +
+            `<span class="terminal-cursor">${escape(charAtCursor)}</span>` +
+            escape(rest);
         }
       }
 
@@ -279,23 +279,12 @@ export async function runEditor(EditorClass, args, cmdName, shell) {
   let isNewFile = false;
 
   if (resolved === null) {
-    let parentPathStr = '';
-    let name = fileArg;
-    const lastSlash = fileArg.lastIndexOf('/');
-    if (lastSlash !== -1) {
-      parentPathStr = fileArg.slice(0, lastSlash);
-      name = fileArg.slice(lastSlash + 1);
-      if (parentPathStr === '') {
-        parentPathStr = '/';
-      }
-    }
-
-    const resolvedParent = shell.fileSystem.resolvePath(shell.currentPath, parentPathStr);
-    if (resolvedParent === null) {
+    const parentAndName = shell.fileSystem.resolveParentAndName(shell.currentPath, fileArg);
+    if (parentAndName === null) {
       shell.print(`${cmdName}: cannot open '${fileArg}': No such file or directory`, 'color-error');
       return;
     }
-    resolved = [...resolvedParent, name];
+    resolved = [...parentAndName.resolvedParent, parentAndName.name];
     isNewFile = true;
   } else {
     const node = shell.fileSystem.getNodeByPath(resolved);

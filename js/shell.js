@@ -1,7 +1,38 @@
 import { resolvePath, getNodeByPath } from './fs.js';
 import { audio } from './audio.js';
 import { parseMarkdown, escapeHTML } from './utils/markdown.js';
-import { buddies } from './buddies.js';
+
+function findCommentIndex(str) {
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  let escaped = false;
+
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (char === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (char === "'" && !inDoubleQuote) {
+      inSingleQuote = !inSingleQuote;
+      continue;
+    }
+    if (char === '"' && !inSingleQuote) {
+      inDoubleQuote = !inDoubleQuote;
+      continue;
+    }
+    if (char === '#' && !inSingleQuote && !inDoubleQuote) {
+      if (i === 0 || /\s/.test(str[i - 1])) {
+        return i;
+      }
+    }
+  }
+  return -1;
+}
 
 export class Shell {
   constructor(options = {}) {
@@ -25,11 +56,27 @@ export class Shell {
 
     this.fileSystem = options.fileSystem || null;
     this.commands = options.commands || {};
+    this.onConnect = options.onConnect || null;
     this.placeholder = document.getElementById('input-placeholder');
   }
 
   mount() {
     // Expose compatibility namespace for scripts if needed, but decoupled internally
+
+    // Background preloading of lazy commands metadata
+    for (const [name, cmd] of Object.entries(this.commands)) {
+      if (cmd.lazy) {
+        cmd.import().then(module => {
+          const loadedCmd = module[name];
+          if (loadedCmd) {
+            Object.assign(cmd, loadedCmd);
+            cmd.lazy = false;
+          }
+        }).catch(err => {
+          console.error(`Failed to preload metadata for command: ${name}`, err);
+        });
+      }
+    }
 
 
     // Sync glow backdrop throttled to prevent composition lag
@@ -170,7 +217,7 @@ export class Shell {
           // Normal shell Ctrl+C behavior (only when NOT in a readInput sub-prompt)
           if (this.loginState === 'LOGGED_IN' && !this.input.disabled) {
             const currentVal = this.input.value;
-            this.print(`<span class="color-accent"><span class="red">${this.currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${this.currentPath.length === 0 ? '~' : '/' + this.currentPath.join('/')}</span># ${currentVal}^C`);
+            this.print(`<span class="color-accent"><span class="red">${this.currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${this.currentPath.length === 0 ? '~' : '/' + this.currentPath.join('/')}</span># ${this.escapeHTML(currentVal)}^C`);
             this.input.value = '';
             this.inputDisplay.textContent = '';
             this.updatePrompt();
@@ -255,8 +302,6 @@ export class Shell {
     }
 
     const selStart = text === this.input.value ? (this.input.selectionStart || 0) : text.length;
-    const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
     const wrapCharacters = (str, startIdx) => {
       return str.split('').map((char, i) => {
         const displayChar = char === '\n' ? '\n' : (char === ' ' ? '\u00A0' : char);
@@ -279,9 +324,8 @@ export class Shell {
       this.inputDisplay.innerHTML = wrapCharacters(left, 0) + getCursorHTML(charUnder) + wrapCharacters(right, selStart + 1);
     } else {
       // Render standard text and dim comments, embedding cursor appropriately
-      const commentMatch = text.match(/(?:\s|^)#.*/);
-      if (commentMatch) {
-        const commentIdx = commentMatch.index;
+      const commentIdx = findCommentIndex(text);
+      if (commentIdx !== -1) {
         const commandPart = text.slice(0, commentIdx);
         const commentPart = text.slice(commentIdx);
 
@@ -420,12 +464,12 @@ export class Shell {
 
     const displayPath = this.currentPath.length === 0 ? '~' : '/' + this.currentPath.join('/');
 
-    const commentMatch = trimmed.match(/(?:\s|^)#.*/);
+    const commentIdx = findCommentIndex(trimmed);
     let commandPart = trimmed;
     let printedLine = escapeHTML(trimmed);
-    if (commentMatch) {
-      const commandPartStr = trimmed.slice(0, commentMatch.index);
-      const commentPartStrFull = trimmed.slice(commentMatch.index);
+    if (commentIdx !== -1) {
+      const commandPartStr = trimmed.slice(0, commentIdx);
+      const commentPartStrFull = trimmed.slice(commentIdx);
       printedLine = escapeHTML(commandPartStr) + `<span class="color-dim">${escapeHTML(commentPartStrFull)}</span>`;
       commandPart = commandPartStr.trim();
     }
@@ -442,6 +486,20 @@ export class Shell {
 
     if (this.commands[command]) {
       const cmd = this.commands[command];
+
+      if (cmd.lazy) {
+        try {
+          const module = await cmd.import();
+          const loadedCmd = module[command];
+          if (loadedCmd) {
+            Object.assign(cmd, loadedCmd);
+            cmd.lazy = false;
+          }
+        } catch (err) {
+          this.print(`Failed to load command '${command}': ${err.message}`, 'color-error');
+          return;
+        }
+      }
 
       // Intercept -h or --help to display detailed command help
       if (args.includes('-h') || args.includes('--help')) {
@@ -507,7 +565,7 @@ export class Shell {
         } else {
           this.print(matches.join('    '), 'color-accent');
           const displayPath = this.currentPath.length === 0 ? '~' : '/' + this.currentPath.join('/');
-          this.print(`<span class="color-accent"><span class="red">${this.currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${currentVal}`);
+          this.print(`<span class="color-accent"><span class="red">${this.currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${this.escapeHTML(currentVal)}`);
         }
       }
     } else {
@@ -534,7 +592,7 @@ export class Shell {
           } else {
             this.print(matches.join('    '), 'color-accent');
             const displayPath = this.currentPath.length === 0 ? '~' : '/' + this.currentPath.join('/');
-            this.print(`<span class="color-accent"><span class="red">${this.currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${currentVal}`);
+            this.print(`<span class="color-accent"><span class="red">${this.currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${this.escapeHTML(currentVal)}`);
           }
         }
         return;
@@ -593,7 +651,7 @@ export class Shell {
           this.print(formattedMatches.join('    '));
 
           const displayPath = this.currentPath.length === 0 ? '~' : '/' + this.currentPath.join('/');
-          this.print(`<span class="color-accent"><span class="red">${this.currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${currentVal}`);
+          this.print(`<span class="color-accent"><span class="red">${this.currentUsername}</span>@chenghao.li</span>:<span class="color-dir">${displayPath}</span># ${this.escapeHTML(currentVal)}`);
         }
       }
     }
@@ -617,12 +675,14 @@ export class Shell {
       if (charIndex >= cmdText.length) {
         clearInterval(typeEffect);
 
-        setTimeout(() => {
+        setTimeout(async () => {
           this.print('<span class="color-accent">C:\\Users\\cli&gt;</span> ssh ' + this.currentUsername + '@chenghao.li');
           this.inputDisplay.textContent = '';
 
           audio.playBootChime();
-          this.printMOTD();
+          if (this.onConnect) {
+            await this.onConnect(this);
+          }
           this.promptPrefix.innerHTML = `<span class="color-accent"><span class="red">${this.currentUsername}</span>@chenghao.li</span>:<span class="color-dir">~</span>#`;
 
           setTimeout(() => {
@@ -650,111 +710,5 @@ export class Shell {
         }, 400);
       }
     }, 50);
-  }
-
-  printMOTD() {
-    const now = new Date();
-    const currentTimestamp = now.toString();
-    const asciiArt = `<span class="color-dim red">
-
-       ░░░░    ░  ░░ ░░░░   ░░░                ░░                             </span><span class="red">
-      ░░░     ░  ░░░░░                    ░         ░░                        
-     ░░░<span class="color-dim red"> ░</span>   ▒  ▒  ▒▒                               ░  ░                      
-    ▒▒▒▒       ▒▒▒▒                   </span>▓█</span><span class="red">          ▒                           
-    ▒▒▒<span class="color-dim red">  ▒</span>          ▒▒               </span>█  █</span><span class="red">               ▒                     
-   ▒ ▒<span class="color-dim red"> ▒▒▒▒</span>        ▒▒               </span>█    █</span><span class="red">        ▒                           
-   ▓▓▓<span class="color-dim red">  ▓</span>          ▓            </span>   █ ▓▓▓  █</span><span class="red">█▓             ▓  ▓                
-  ▓ ▓<span class="color-dim red"> ▓  ▓</span>  ▓▓  ▓▓    <span class="color-dim red">▒</span>   ▓</span>█<span class="red">█ ▓</span> ▓▞▀▀▀▀▀▀▀▀▀█▀▀▀▀▀▀▀▀▛▀▀</span><span class="red">                       
-  ▓ ▓            ▓       ██ ▓ ▓</span>██     ▓█ ▓▓ █ ▓     ▓</span><span class="red">                         
-  ▓▓▓            ▓  <span class="color-dim red">▒</span>   █ ▓  </span>█<span class="red">█</span>██     ██▓█   ████▓ █</span><span class="red">                          
-   ▓▓<span class="color-dim red">   ▓</span>          <span class="color-dim red">▒ ▒</span> </span>█<span class="red">▓ ▓▓▓</span>  ▓   ▟     ▚     ██████</span><span class="red">        ▒          </span> | <span class="blue">arch</span>4ic</span><span class="red">
-  ▓▓▓<span class="color-dim red">   ▓</span>      ▓▓    <span class="color-dim red">▒</span></span>█▓<span class="red">  █▓</span> ▓█  ▓ █      ██▓  ██ ████</span><span class="red">▒                       
-  ▓▓▓<span class="color-dim red">   ▓</span>       ▓▓    ██ ▓</span> █ █ █   ▓█▓ ▄<span class="red">▓</span>██ ███▓█ █  <span class="red">▓</span> █</span><span class="red">                      
-  ▓ ▓           ▓▓      </span>█ ▓ <span class="red">█</span>█ <span class="red">▓</span>    ▄   ▚   █  <span class="red">▓</span> █    <span class="red">▓</span>█</span><span class="red">                      
-  ▓ ▓<span class="color-dim red"> ▓▓▓▓</span>      ▓▓    ▓▓ </span>█<span class="red">█▓</span>█ ▄▄▄▄▄▓▓▄▄▓▄▄▓▓▓▓▄▄▄▄<span class="red">▓</span>███<span class="red">▓                       
-    ▓▓<span class="color-dim red">  ▓</span>       ▓▓ <span class="color-dim red">░</span>      </span>█   <span class="red">▓</span>█ ▓ ▓▓██████   ██   █<span class="red">   ▓  ▓          ▓  ▓     
-   ▒ ▒<span class="color-dim red"> ▒▒▒▒▒</span>   ▒  <span class="color-dim red">▒▒▒</span>    </span>█    █                █ <span class="red">▓</span>  █<span class="red">     ▒        ▒▒▒  ▒     
-    ▒▒▒<span class="color-dim red">  ▒ ▒</span>      <span class="color-dim red">▒▒▒▒</span>  </span>█    █              ▓<span class="red">   █▓  ▓</span>█<span class="red">  ▒▒          ▒  ▒      
-    ▒ ▒▒<span class="color-dim red">    ▒</span>          </span>█▄▄▄▄▞               ▓    ▚▄▄▄█<span class="red">               ▒▒      
-     ░ ░<span class="color-dim red"> ░   ░</span>   ░    ░                                         ░     ░       
-      ░ ░<span class="color-dim red">     ░</span>         ░                                      ░     ░ ░      </span><span class="color-dim red">
-       ░ ░░<span class="color-dim red">    ░</span>            ░░░                ░░░           ░░    ░░ ░       </span>
-
-`;
-
-    /*
-    const asciiArt = `
-                                       
-                     @                 
-                    @@@                
-                   @@@@@               
-                  @@@@@@@              
-                 @@@@@@@@@             
-                @@@@@@@@@@@            
-               @@@@@@ @@@@@@           
-                       @@@@@@          
-                        @@@@@@          | <span class="blue">arch</span>4ic
-                         @@@@@@        
-           <span class="red">#########</span>      @@@@@@       
-          <span class="red">############</span>     @@@@@@      
-         <span class="red">######</span>             @@@@@@     
-        <span class="red">######</span>               @@@@@@    
-       <span class="red">######</span>                 @@@@@@   
-      <span class="red">######</span>                   @@@@@@  
-     <span class="red">######</span>                     @@@@@@ 
-                                       
-    `;*/
-
-    this.print(`Arch Linux 6.9.3-arch1-1 (tty1)`, 'color-dim');
-    this.print(`\n  >>> <span class="blue">Welcome, ${this.currentUsername}@chenghao.li!</span> <<<`, 'color-accent');
-    this.print(asciiArt, 'color-accent motd-ascii-art');
-    this.printBuddyBox();
-    this.print(`
-System information at ${currentTimestamp}:
-  System load:  0.15               Processes:             108
-  Usage of /:   38.4% of 50GB      Users logged in:       2
-  Memory usage: 12%                IPv4 address for eth0: 192.168.1.104
-`, 'color-dim');
-    this.print(` `);
-  }
-
-  printBuddyBox() {
-    if (!buddies || buddies.length === 0) return;
-
-    let buddiesPerRow = 5;
-    let borderLength = 60;
-
-    if (window.innerWidth < 480) {
-      buddiesPerRow = 2;
-      borderLength = 24;
-    } else if (window.innerWidth < 768) {
-      buddiesPerRow = 3;
-      borderLength = 34;
-    }
-
-    const rows = [];
-    for (let i = 0; i < buddies.length; i += buddiesPerRow) {
-      rows.push(buddies.slice(i, i + buddiesPerRow));
-    }
-
-    let rowsHTML = '';
-    rows.forEach(row => {
-      let rowContentHTML = '';
-      row.forEach(filename => {
-        const nameWithoutExt = filename.replace(/\.[^/.]+$/, "");
-        const url = nameWithoutExt.startsWith('http://') || nameWithoutExt.startsWith('https://')
-          ? nameWithoutExt
-          : `https://${nameWithoutExt}`;
-
-        rowContentHTML += `<a href="${url}" target="_blank" rel="noopener noreferrer" class="buddy-link" title="${nameWithoutExt}"><img src="assets/images/buddies/${filename}" alt="${nameWithoutExt}" class="buddy-img" onerror="this.parentNode.style.display='none'"></a>`;
-      });
-
-      rowsHTML += `<div class="buddy-box-row"><span class="buddy-border">║</span><div class="buddy-row-content">${rowContentHTML}</div><span class="buddy-border">║</span></div>`;
-    });
-
-    const borderLine = '═'.repeat(borderLength);
-    const boxHTML = `<div class="buddy-box"><div class="buddy-box-header">╔${borderLine}╗</div>${rowsHTML}<div class="buddy-box-footer">╚${borderLine}╝</div></div>`;
-
-    this.print(boxHTML, 'color-text');
   }
 }
