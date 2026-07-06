@@ -488,6 +488,10 @@ export class Shell {
 
   clear() {
     this.output.innerHTML = '';
+    this.glowBackdrops.forEach(el => {
+      if (el) el.innerHTML = '';
+    });
+    this.body.scrollTop = 0;
   }
 
   focus() {
