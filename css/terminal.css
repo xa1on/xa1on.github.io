@@ -50,9 +50,14 @@
   word-break: break-all;
   pointer-events: none;
   filter: blur(80px);
-  opacity: 0.70;
   z-index: 1;
   user-select: none;
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out;
+}
+
+.terminal-glow-backdrop.active {
+  opacity: 0.70;
 }
 
 /* Ensure backdrop clones do not calculate expensive nested text-shadows */

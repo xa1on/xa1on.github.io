@@ -38,7 +38,11 @@ export class Shell {
   constructor(options = {}) {
     this.body = document.getElementById('terminal-body');
     this.output = document.getElementById('terminal-output');
-    this.glowBackdrop = document.getElementById('terminal-glow-backdrop');
+    this.glowBackdrops = [
+      document.getElementById('terminal-glow-backdrop-1'),
+      document.getElementById('terminal-glow-backdrop-2')
+    ];
+    this.activeGlowIdx = 0;
     this.inputLine = document.getElementById('input-line');
     this.promptPrefix = document.getElementById('prompt-prefix');
     this.inputDisplay = document.getElementById('input-display');
@@ -79,17 +83,41 @@ export class Shell {
     }
 
 
-    // Sync glow backdrop throttled to prevent composition lag
-    if (this.glowBackdrop && this.output) {
+    // Sync glow backdrop using a dual-layer cross-fade
+    const backdropsExist = this.glowBackdrops[0] && this.glowBackdrops[1];
+    if (backdropsExist && this.output) {
       let throttleTimeout = null;
       const observer = new MutationObserver(() => {
         if (!throttleTimeout) {
           throttleTimeout = setTimeout(() => {
-            if (this.glowBackdrop && this.output) {
-              this.glowBackdrop.innerHTML = this.output.innerHTML;
+            if (this.output) {
+              const currentActive = this.glowBackdrops[this.activeGlowIdx];
+              const nextActiveIdx = (this.activeGlowIdx + 1) % 2;
+              const nextActive = this.glowBackdrops[nextActiveIdx];
+
+              if (currentActive && nextActive) {
+                const childCount = this.output.children.length;
+                const maxGlowLines = 85;
+                const startIndex = Math.max(0, childCount - maxGlowLines);
+                
+                // 1. Clear and populate the inactive layer
+                nextActive.innerHTML = '';
+                const fragment = document.createDocumentFragment();
+                for (let i = startIndex; i < childCount; i++) {
+                  fragment.appendChild(this.output.children[i].cloneNode(true));
+                }
+                nextActive.appendChild(fragment);
+
+                // 2. Cross-fade by swapping class
+                nextActive.classList.add('active');
+                currentActive.classList.remove('active');
+
+                // 3. Switch active pointer
+                this.activeGlowIdx = nextActiveIdx;
+              }
             }
             throttleTimeout = null;
-          }, 80);
+          }, 150);
         }
       });
       observer.observe(this.output, {
@@ -97,7 +125,19 @@ export class Shell {
         subtree: true,
         characterData: true
       });
-      this.glowBackdrop.innerHTML = this.output.innerHTML;
+      
+      // Initial sync on first active backdrop
+      const initialActive = this.glowBackdrops[0];
+      if (initialActive) {
+        initialActive.innerHTML = '';
+        const fragment = document.createDocumentFragment();
+        const childCount = this.output.children.length;
+        const startIndex = Math.max(0, childCount - 85);
+        for (let i = startIndex; i < childCount; i++) {
+          fragment.appendChild(this.output.children[i].cloneNode(true));
+        }
+        initialActive.appendChild(fragment);
+      }
     }
 
     // Input visual mirroring and cursor synchronization throttled to requestAnimationFrame

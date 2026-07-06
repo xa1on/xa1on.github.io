@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="css/base.css?v=1.0.0">
   <link rel="stylesheet" href="css/components.css?v=1.0.0">
   <link rel="stylesheet" href="css/editors.css?v=1.0.1">
-  <link rel="stylesheet" href="css/terminal.css?v=1.0.3">
+  <link rel="stylesheet" href="css/terminal.css?v=1.0.4">
 </head>
 
 <body>
@@ -30,8 +30,9 @@
 
   <!-- Fullscreen terminal container -->
   <main class="terminal-body" id="terminal-body">
-    <!-- Blurred backdrop copy for high-performance screen glow -->
-    <div class="terminal-glow-backdrop" id="terminal-glow-backdrop" aria-hidden="true"></div>
+    <!-- Blurred backdrop copies for high-performance screen glow cross-fading -->
+    <div class="terminal-glow-backdrop active" id="terminal-glow-backdrop-1" aria-hidden="true"></div>
+    <div class="terminal-glow-backdrop" id="terminal-glow-backdrop-2" aria-hidden="true"></div>
     <div class="terminal-output" id="terminal-output">
       <!-- Text output will go here -->
     </div>
