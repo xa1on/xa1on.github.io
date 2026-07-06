@@ -1,0 +1,301 @@
+/* ==========================================
+   Fullscreen Terminal Viewport
+   ========================================== */
+.terminal-body {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 30px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  font-size: 1rem;
+  line-height: 1.2;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  z-index: 5;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+}
+
+/* Custom Scrollbar for Webkit */
+.terminal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.terminal-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.terminal-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.terminal-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.terminal-glow-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  pointer-events: none;
+  filter: blur(80px);
+  opacity: 0.70;
+  z-index: 1;
+  user-select: none;
+}
+
+/* Ensure backdrop clones do not calculate expensive nested text-shadows */
+.terminal-glow-backdrop * {
+  text-shadow: none !important;
+}
+
+.terminal-output {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  contain: layout style;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+}
+
+.terminal-output div,
+.terminal-output span,
+.terminal-output a,
+.terminal-input-line span {
+  text-shadow: 0 0 3px currentColor;
+  text-shadow: 0 0 5px rgb(from currentColor r g b / 0.4);
+}
+
+/* Text coloring classes */
+.color-text {
+  color: var(--text-color);
+}
+
+.color-dir {
+  color: var(--dir-color);
+  font-weight: 700;
+}
+
+.color-file {
+  color: var(--text-color);
+}
+
+.color-link {
+  color: var(--link-color);
+  text-decoration: underline;
+  cursor: pointer;
+  transition: text-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.color-link:hover {
+  text-shadow: 0 0 12px var(--link-color);
+  opacity: 0.75 !important;
+}
+
+.color-error {
+  color: var(--error-color);
+}
+
+.color-accent {
+  color: var(--accent-color);
+  font-weight: bold;
+}
+
+.color-dim {
+  color: var(--dim-color);
+  opacity: 0.8;
+}
+
+/* Custom Inline Preset Colors */
+.color-blue,
+.blue,
+.blue-color {
+  color: #58a6ff;
+}
+
+.green-color,
+.color-green,
+.green {
+  color: #7ee787;
+}
+
+.color-red,
+.red,
+.red-color {
+  color: #ff1100;
+}
+
+.color-yellow,
+.yellow,
+.yellow-color {
+  color: #d29922;
+}
+
+.color-cyan,
+.cyan,
+.cyan-color {
+  color: #39c5cf;
+}
+
+.color-magenta,
+.magenta,
+.magenta-color {
+  color: #d859c7;
+}
+
+.color-white,
+.white,
+.white-color {
+  color: #ffffff;
+}
+
+/* Interactive ls Output Items & Command Links */
+.ls-item,
+.cmd-link {
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.2s ease;
+}
+
+.ls-item:hover,
+.cmd-link:hover {
+  text-decoration: underline !important;
+  opacity: 0.75 !important;
+}
+
+.boot-help-link {
+  font-weight: bold;
+  text-decoration: underline !important;
+}
+
+.input-placeholder {
+  position: relative;
+  z-index: 11;
+}
+
+.placeholder-text {
+  opacity: 0.35 !important;
+}
+
+.placeholder-help-link {
+  font-weight: bold;
+  text-decoration: underline !important;
+  opacity: 0.35 !important;
+  transition: opacity 0.2s ease;
+}
+
+.placeholder-help-link:hover {
+  opacity: 1 !important;
+}
+
+/* ==========================================
+   Interactive Input Line & Cursor
+   ========================================== */
+.terminal-input-line {
+  display: block;
+  position: relative;
+  contain: layout style;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+}
+
+.prompt-prefix {
+  color: var(--accent-color);
+  user-select: none;
+  display: inline;
+  padding-right: 0px;
+}
+
+.input-container {
+  display: contents;
+}
+
+.input-display {
+  white-space: pre-wrap;
+  word-break: break-all;
+  display: inline;
+  min-height: 1.2em;
+}
+
+.terminal-cursor {
+  display: inline-block;
+  vertical-align: text-bottom;
+  width: 9px;
+  height: 17px;
+  background-color: var(--cursor-color);
+  box-shadow: 0 0 6px var(--cursor-color);
+  animation: blink 1s step-end infinite;
+  margin-left: 2px;
+}
+
+@keyframes blink {
+
+  from,
+  to {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Hidden Real Input Field */
+#terminal-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  font-family: inherit;
+  font-size: 16px;
+  /* Prevents auto-zoom on iOS */
+  pointer-events: auto;
+  z-index: 10;
+}
+
+
+/* ==========================================
+   Responsive Rules
+   ========================================== */
+@media (max-width: 768px) {
+  .terminal-body {
+    padding: 16px;
+    font-size: 0.9rem;
+  }
+
+  .terminal-cursor {
+    height: 15px;
+    width: 8px;
+  }
+
+  .buddy-box {
+    margin: 15px 0 15px 0;
+    /* remove left indent to maximize space on mobile */
+  }
+
+  .motd-ascii-art {
+    font-size: clamp(0.35rem, calc((100vw - 32px) / 51), 0.9rem);
+  }
+}

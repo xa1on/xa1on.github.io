@@ -1,0 +1,117 @@
+@font-face {
+  font-family: 'Fira Code';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../assets/fonts/FiraCode-VF.woff2') format('woff2');
+}
+
+:root {
+  --bg-color: #0c0d10;
+  --text-color: #ffffff;
+  --glow-color: rgba(255, 255, 255, 1);
+  --cursor-color: #ffffff;
+  --accent-color: #ffffff;
+  --error-color: #ff7b72;
+  --dir-color: #58a6ff;
+  --link-color: #58a6ff;
+  --dim-color: rgba(255, 255, 255, 0.6);
+  --crt-scanlines: rgba(0, 0, 0, 0.15);
+}
+
+/* ==========================================
+   Base Layout & Reset
+   ========================================== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Fira Code', 'Courier New', Courier, monospace;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+/* ==========================================
+   futuristic grid background
+   ========================================== */
+.grid-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center center;
+  pointer-events: none;
+  z-index: 1;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+}
+
+/* ==========================================
+   CRT Scanline, Flicker, & Vignette Effects
+   ========================================== */
+.scanlines {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(var(--crt-scanlines) 50%,
+      rgba(0, 0, 0, 0.25) 50%);
+  background-size: 100% 4px;
+  z-index: 999;
+  pointer-events: none;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+}
+
+.crt-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url('../assets/overlays/crt.webp');
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: 1000;
+  pointer-events: none;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+}
+
+.crt-overlay-difference {
+  mix-blend-mode: difference;
+  opacity: 0.05;
+}
+
+.crt-overlay-overlay {
+  mix-blend-mode: overlay;
+  opacity: 0.4;
+}
+
+/* Light, hardware-accelerated vignette overlay */
+body::after {
+  content: " ";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, transparent 70%, rgba(0, 0, 0, 0.45) 100%);
+  pointer-events: none;
+  z-index: 1001;
+  transform: translate3d(0, 0, 0);
+}

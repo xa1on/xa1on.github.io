@@ -1,0 +1,180 @@
+/* ==========================================
+   Terminal Editors (nano & vim) Styling
+   ========================================== */
+.terminal-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+  font-family: inherit;
+  line-height: 1.2;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* GNU nano Custom Styles */
+.nano-header {
+  display: flex;
+  justify-content: space-between;
+  background-color: #ffffff;
+  color: #000000;
+  font-weight: bold;
+  padding: 2px 10px;
+  text-shadow: none !important;
+}
+
+.nano-content {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+  padding: 5px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.nano-line {
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-family: inherit;
+}
+
+.nano-line-active {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.nano-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 10px;
+  background-color: #000000;
+}
+
+.nano-shortcuts-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 6px 12px;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 1200px) {
+  .nano-shortcuts-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .nano-shortcuts-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.nano-shortcut {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.nano-key {
+  color: #000000;
+  background-color: #ffffff;
+  padding: 0 3px;
+  font-weight: bold;
+  text-shadow: none !important;
+  border-radius: 1px;
+}
+
+.nano-desc {
+  color: #ffffff;
+}
+
+.nano-status,
+.nano-prompt {
+  background-color: #1a1a24;
+  border-top: 1px solid var(--text-color);
+  padding: 6px 10px;
+  font-weight: bold;
+}
+
+/* Vim Custom Styles */
+.vim-content {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+  padding: 5px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.vim-line {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.vim-lnum {
+  color: #858585;
+  margin-right: 12px;
+  user-select: none;
+}
+
+.vim-footer {
+  display: flex;
+  flex-direction: column;
+}
+
+.vim-status-bar {
+  display: flex;
+  justify-content: space-between;
+  background-color: #d0d0d0;
+  color: #000000;
+  padding: 2px 10px;
+  font-size: 0.9rem;
+  font-weight: bold;
+  text-shadow: none !important;
+}
+
+.vim-status-left,
+.vim-status-right {
+  text-shadow: none !important;
+}
+
+.vim-command-line {
+  padding: 4px 10px;
+  font-weight: bold;
+  color: var(--text-color);
+  min-height: 1.5em;
+}
+
+/* Highlighted editor blinking cursor overrides */
+.terminal-editor .terminal-cursor {
+  background-color: var(--cursor-color);
+  box-shadow: 0 0 6px var(--cursor-color);
+  animation: blink 1s step-end infinite;
+  display: inline;
+  padding: 0 1px;
+}
+
+.terminal-editor .terminal-selection {
+  background-color: rgba(255, 255, 255, 0.25);
+  text-shadow: 0 0 4px rgba(255, 255, 255, 0.4);
+}
+
+/* Vim search highlighting */
+.vim-search-match {
+  background-color: #ffdf00;
+  color: #000000;
+  text-shadow: none !important;
+}
+
+/* Vim insert mode cursor: thin vertical line */
+.terminal-editor.vim-insert-mode .terminal-cursor {
+  background-color: transparent;
+  border-left: 2px solid var(--cursor-color);
+  box-shadow: none;
+  animation: blink 1s step-end infinite;
+  display: inline;
+  padding: 0;
+}
