@@ -113,7 +113,7 @@ export class BaseEditor {
     if (this.textarea) this.textarea.remove();
 
     this.shell.output.style.display = 'flex';
-    this.shell.inputLine.style.display = 'flex';
+    this.shell.inputLine.style.display = '';
     this.shell.body.style.overflowY = '';
     this.shell.loginState = this.originalState;
     this.shell.updatePrompt();

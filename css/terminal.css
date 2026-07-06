@@ -222,7 +222,7 @@
 }
 
 .input-container {
-  display: contents;
+  display: inline;
 }
 
 .input-display {
@@ -235,21 +235,50 @@
 .terminal-cursor {
   display: inline-block;
   vertical-align: text-bottom;
-  width: 9px;
-  height: 17px;
+  min-width: 9px;
   background-color: var(--cursor-color);
+  color: var(--bg-color);
   box-shadow: 0 0 6px var(--cursor-color);
-  animation: blink 1s step-end infinite;
-  margin-left: 2px;
+  animation: block-blink 1s step-end infinite;
+  margin-left: 0px;
+}
+
+.terminal-cursor.cursor-solid {
+  animation: none !important;
+  background-color: var(--cursor-color) !important;
+  color: var(--bg-color) !important;
+  box-shadow: 0 0 6px var(--cursor-color) !important;
+}
+
+@keyframes block-blink {
+  from,
+  to {
+    background-color: var(--cursor-color);
+    color: var(--bg-color);
+    box-shadow: 0 0 6px var(--cursor-color);
+  }
+  50% {
+    background-color: transparent;
+    color: inherit;
+    box-shadow: none;
+  }
+}
+
+@keyframes bar-blink {
+  from,
+  to {
+    border-left-color: var(--cursor-color);
+  }
+  50% {
+    border-left-color: transparent;
+  }
 }
 
 @keyframes blink {
-
   from,
   to {
     opacity: 1;
   }
-
   50% {
     opacity: 0;
   }

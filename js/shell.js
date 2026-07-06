@@ -12,7 +12,6 @@ export class Shell {
     this.promptPrefix = document.getElementById('prompt-prefix');
     this.inputDisplay = document.getElementById('input-display');
     this.input = document.getElementById('terminal-input');
-    this.cursor = document.getElementById('cursor');
 
     this.loginState = 'BOOTING';
     this.currentUsername = 'guest';
@@ -57,6 +56,16 @@ export class Shell {
     // Input visual mirroring
     this.input.addEventListener('input', (e) => {
       this.updateInputDisplay(e.target.value);
+    });
+
+    const syncCursor = () => {
+      this.updateInputDisplay(this.input.value);
+    };
+    this.input.addEventListener('keyup', syncCursor);
+    this.input.addEventListener('click', syncCursor);
+    this.input.addEventListener('focus', syncCursor);
+    this.input.addEventListener('keydown', () => {
+      setTimeout(syncCursor, 0);
     });
 
     // Special keyboard listeners (Enter, Up, Down, Tab)
@@ -220,38 +229,60 @@ export class Shell {
       if (this.placeholder) this.placeholder.style.display = 'none';
     }
 
-    // 2. Clear text if empty
-    if (text === '') {
-      this.inputDisplay.textContent = '';
-      if (this.cursor) {
-        this.cursor.style.animation = 'none';
-        void this.cursor.offsetHeight;
-        this.cursor.style.animation = '';
-      }
-      return;
-    }
+    const selStart = text === this.input.value ? (this.input.selectionStart || 0) : text.length;
+    const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-    // 3. For sub-prompt input resolver, render raw text
-    if (this.activeInputResolver) {
-      this.inputDisplay.textContent = text;
+    const getCursorHTML = (char) => {
+      const displayChar = (char === '' || char === ' ' || char === '\n') ? '\u00A0' : char;
+      return `<span class="terminal-cursor" id="cursor">${escapeHTML(displayChar)}</span>`;
+    };
+
+    // 2. Render text with the cursor embedded at selStart
+    if (text === '') {
+      this.inputDisplay.innerHTML = getCursorHTML('');
+    } else if (this.activeInputResolver) {
+      const left = text.slice(0, selStart);
+      const charUnder = text.slice(selStart, selStart + 1);
+      const right = text.slice(selStart + 1);
+      this.inputDisplay.innerHTML = escapeHTML(left) + getCursorHTML(charUnder) + escapeHTML(right);
     } else {
-      // 4. Render standard text and dim comments
-      const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      // Render standard text and dim comments, embedding cursor appropriately
       const commentMatch = text.match(/(?:\s|^)#.*/);
       if (commentMatch) {
-        const commandPart = text.slice(0, commentMatch.index);
-        const commentPart = text.slice(commentMatch.index);
-        this.inputDisplay.innerHTML = escapeHTML(commandPart) + `<span class="color-dim">${escapeHTML(commentPart)}</span>`;
+        const commentIdx = commentMatch.index;
+        const commandPart = text.slice(0, commentIdx);
+        const commentPart = text.slice(commentIdx);
+
+        if (selStart <= commentIdx) {
+          const left = commandPart.slice(0, selStart);
+          const charUnder = commandPart.slice(selStart, selStart + 1);
+          const right = commandPart.slice(selStart + 1);
+          this.inputDisplay.innerHTML = escapeHTML(left) + getCursorHTML(charUnder) + escapeHTML(right) + `<span class="color-dim">${escapeHTML(commentPart)}</span>`;
+        } else {
+          const localSel = selStart - commentIdx;
+          const left = commentPart.slice(0, localSel);
+          const charUnder = commentPart.slice(localSel, localSel + 1);
+          const right = commentPart.slice(localSel + 1);
+          this.inputDisplay.innerHTML = escapeHTML(commandPart) + `<span class="color-dim">${escapeHTML(left)}${getCursorHTML(charUnder)}${escapeHTML(right)}</span>`;
+        }
       } else {
-        this.inputDisplay.textContent = text;
+        const left = text.slice(0, selStart);
+        const charUnder = text.slice(selStart, selStart + 1);
+        const right = text.slice(selStart + 1);
+        this.inputDisplay.innerHTML = escapeHTML(left) + getCursorHTML(charUnder) + escapeHTML(right);
       }
     }
 
-    // Reset cursor blink animation on any update to make it solid/visible
-    if (this.cursor) {
-      this.cursor.style.animation = 'none';
-      void this.cursor.offsetHeight; // force reflow to restart animation
-      this.cursor.style.animation = '';
+    // Keep cursor solid while typing/moving, then resume blinking after 500ms
+    const cursorEl = document.getElementById('cursor');
+    if (cursorEl) {
+      cursorEl.classList.add('cursor-solid');
+      if (this.cursorBlinkTimeout) {
+        clearTimeout(this.cursorBlinkTimeout);
+      }
+      this.cursorBlinkTimeout = setTimeout(() => {
+        cursorEl.classList.remove('cursor-solid');
+      }, 500);
     }
   }
 

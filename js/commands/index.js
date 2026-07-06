@@ -15,6 +15,8 @@ import { rm } from './filesystem/rm.js';
 import { mute } from './audio/mute.js';
 import { unmute } from './audio/unmute.js';
 import { buddies } from './general/buddies.js';
+import { echo } from './general/echo.js';
+
 
 export const commands = {
   // Eagerly loaded
@@ -34,6 +36,8 @@ export const commands = {
   mute,
   unmute,
   buddies,
+  echo,
+
 
   // Lazy loaded LLM interface
   llm: {

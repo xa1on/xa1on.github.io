@@ -151,8 +151,9 @@
 /* Highlighted editor blinking cursor overrides */
 .terminal-editor .terminal-cursor {
   background-color: var(--cursor-color);
+  color: var(--bg-color);
   box-shadow: 0 0 6px var(--cursor-color);
-  animation: blink 1s step-end infinite;
+  animation: block-blink 1s step-end infinite;
   display: inline;
   padding: 0 1px;
 }
@@ -173,8 +174,10 @@
 .terminal-editor.vim-insert-mode .terminal-cursor {
   background-color: transparent;
   border-left: 2px solid var(--cursor-color);
+  border-left-color: var(--cursor-color);
   box-shadow: none;
-  animation: blink 1s step-end infinite;
+  animation: bar-blink 1s step-end infinite;
   display: inline;
   padding: 0;
+  color: inherit;
 }
