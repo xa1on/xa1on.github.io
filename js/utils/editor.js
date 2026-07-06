@@ -37,7 +37,7 @@ export class BaseEditor {
   initDOM(editorClassName) {
     // Hide terminal output & input line
     this.shell.output.style.display = 'none';
-    this.shell.inputLine.style.display = 'none';
+    this.shell.inputLine.classList.add('hidden-input-line');
     
     // Prevent terminal body from scrolling
     this.shell.body.style.overflowY = 'hidden';
@@ -113,7 +113,7 @@ export class BaseEditor {
     if (this.textarea) this.textarea.remove();
 
     this.shell.output.style.display = 'flex';
-    this.shell.inputLine.style.display = '';
+    this.shell.inputLine.classList.remove('hidden-input-line');
     this.shell.body.style.overflowY = '';
     this.shell.loginState = this.originalState;
     this.shell.updatePrompt();
