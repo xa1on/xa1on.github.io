@@ -166,7 +166,7 @@ body::after {
   flex-direction: column;
   gap: 0;
   white-space: pre-wrap;
-  word-break: break-word;
+  word-break: break-all;
   pointer-events: none;
   filter: blur(80px);
   opacity: 0.70;
@@ -186,7 +186,7 @@ body::after {
   flex-direction: column;
   gap: 0;
   white-space: pre-wrap;
-  word-break: break-word;
+  word-break: break-all;
   contain: layout style;
   transform: translate3d(0, 0, 0);
   will-change: transform;
@@ -326,9 +326,8 @@ body::after {
    Interactive Input Line & Cursor
    ========================================== */
 .terminal-input-line {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  display: block;
+  position: relative;
   contain: layout style;
   transform: translate3d(0, 0, 0);
   will-change: transform;
@@ -337,24 +336,24 @@ body::after {
 .prompt-prefix {
   color: var(--accent-color);
   user-select: none;
+  display: inline;
+  padding-right: 0px;
 }
 
 .input-container {
-  flex: 1;
-  position: relative;
-  display: flex;
-  align-items: center;
+  display: contents;
 }
 
 .input-display {
-  white-space: pre;
+  white-space: pre-wrap;
   word-break: break-all;
-  display: inline-block;
+  display: inline;
   min-height: 1.2em;
 }
 
 .terminal-cursor {
   display: inline-block;
+  vertical-align: text-bottom;
   width: 9px;
   height: 17px;
   background-color: var(--cursor-color);
@@ -408,6 +407,15 @@ body::after {
   .terminal-cursor {
     height: 15px;
     width: 8px;
+  }
+
+  .buddy-box {
+    margin: 15px 0 15px 0;
+    /* remove left indent to maximize space on mobile */
+  }
+
+  .motd-ascii-art {
+    font-size: clamp(0.35rem, calc((100vw - 32px) / 51), 0.9rem);
   }
 }
 
@@ -641,6 +649,17 @@ body::after {
 }
 
 /* ==========================================
+   MOTD ASCII Art Styling
+   ========================================== */
+.motd-ascii-art {
+  white-space: pre;
+  word-break: normal;
+  overflow-x: visible;
+  line-height: 1.1;
+  display: block;
+}
+
+/* ==========================================
    Buddy Box ASCII Double-line Styling
    ========================================== */
 .buddy-box {
@@ -666,13 +685,15 @@ body::after {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 35px;
+  height: 2.1875em;
+  /* 35px */
   /* Fits 31px high images comfortably */
   line-height: 1;
 }
 
 .buddy-box-title-row {
-  height: 24px;
+  height: 1.5em;
+  /* 24px */
 }
 
 .buddy-border {
@@ -691,7 +712,8 @@ body::after {
 
 .buddy-row-content {
   display: flex;
-  gap: 12px;
+  gap: 0.75em;
+  /* 12px */
   justify-content: center;
   align-items: center;
   flex-grow: 1;
@@ -701,8 +723,10 @@ body::after {
 
 .buddy-link {
   display: inline-block;
-  width: 88px;
-  height: 31px;
+  width: 5.5em;
+  /* 88px */
+  height: 1.9375em;
+  /* 31px */
   line-height: 0;
   transition: transform 0.2s ease;
 }
@@ -712,8 +736,10 @@ body::after {
 }
 
 .buddy-img {
-  width: 88px;
-  height: 31px;
+  width: 5.5em;
+  /* 88px */
+  height: 1.9375em;
+  /* 31px */
   display: block;
   image-rendering: pixelated;
   image-rendering: crisp-edges;

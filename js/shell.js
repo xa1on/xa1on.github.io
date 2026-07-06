@@ -57,11 +57,6 @@ export class Shell {
     // Input visual mirroring
     this.input.addEventListener('input', (e) => {
       this.updateInputDisplay(e.target.value);
-      if (this.cursor) {
-        this.cursor.style.animation = 'none';
-        void this.cursor.offsetHeight; // force reflow to restart animation
-        this.cursor.style.animation = '';
-      }
     });
 
     // Special keyboard listeners (Enter, Up, Down, Tab)
@@ -228,24 +223,35 @@ export class Shell {
     // 2. Clear text if empty
     if (text === '') {
       this.inputDisplay.textContent = '';
+      if (this.cursor) {
+        this.cursor.style.animation = 'none';
+        void this.cursor.offsetHeight;
+        this.cursor.style.animation = '';
+      }
       return;
     }
 
     // 3. For sub-prompt input resolver, render raw text
     if (this.activeInputResolver) {
       this.inputDisplay.textContent = text;
-      return;
+    } else {
+      // 4. Render standard text and dim comments
+      const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const commentMatch = text.match(/(?:\s|^)#.*/);
+      if (commentMatch) {
+        const commandPart = text.slice(0, commentMatch.index);
+        const commentPart = text.slice(commentMatch.index);
+        this.inputDisplay.innerHTML = escapeHTML(commandPart) + `<span class="color-dim">${escapeHTML(commentPart)}</span>`;
+      } else {
+        this.inputDisplay.textContent = text;
+      }
     }
 
-    // 4. Render standard text and dim comments
-    const escapeHTML = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const commentMatch = text.match(/(?:\s|^)#.*/);
-    if (commentMatch) {
-      const commandPart = text.slice(0, commentMatch.index);
-      const commentPart = text.slice(commentMatch.index);
-      this.inputDisplay.innerHTML = escapeHTML(commandPart) + `<span class="color-dim">${escapeHTML(commentPart)}</span>`;
-    } else {
-      this.inputDisplay.textContent = text;
+    // Reset cursor blink animation on any update to make it solid/visible
+    if (this.cursor) {
+      this.cursor.style.animation = 'none';
+      void this.cursor.offsetHeight; // force reflow to restart animation
+      this.cursor.style.animation = '';
     }
   }
 
@@ -638,7 +644,7 @@ export class Shell {
 
     this.print(`Arch Linux 6.9.3-arch1-1 (tty1)`, 'color-dim');
     this.print(`\n  >>> <span class="blue">Welcome, root@chenghao.li!</span> <<<`, 'color-accent');
-    this.print(asciiArt, 'color-accent');
+    this.print(asciiArt, 'color-accent motd-ascii-art');
     this.printBuddyBox();
     this.print(`
 System information at ${currentTimestamp}:
@@ -652,7 +658,17 @@ System information at ${currentTimestamp}:
   printBuddyBox() {
     if (!buddies || buddies.length === 0) return;
 
-    const buddiesPerRow = 5;
+    let buddiesPerRow = 5;
+    let borderLength = 60;
+
+    if (window.innerWidth < 480) {
+      buddiesPerRow = 2;
+      borderLength = 24;
+    } else if (window.innerWidth < 768) {
+      buddiesPerRow = 3;
+      borderLength = 34;
+    }
+
     const rows = [];
     for (let i = 0; i < buddies.length; i += buddiesPerRow) {
       rows.push(buddies.slice(i, i + buddiesPerRow));
@@ -673,7 +689,8 @@ System information at ${currentTimestamp}:
       rowsHTML += `<div class="buddy-box-row"><span class="buddy-border">║</span><div class="buddy-row-content">${rowContentHTML}</div><span class="buddy-border">║</span></div>`;
     });
 
-    const boxHTML = `<div class="buddy-box"><div class="buddy-box-header">╔══════════════════════════════════════════════════════════════╗</div>${rowsHTML}<div class="buddy-box-footer">╚══════════════════════════════════════════════════════════════╝</div></div>`;
+    const borderLine = '═'.repeat(borderLength);
+    const boxHTML = `<div class="buddy-box"><div class="buddy-box-header">╔${borderLine}╗</div>${rowsHTML}<div class="buddy-box-footer">╚${borderLine}╝</div></div>`;
 
     this.print(boxHTML, 'color-text');
   }
