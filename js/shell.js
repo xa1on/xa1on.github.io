@@ -15,7 +15,7 @@ export class Shell {
     this.cursor = document.getElementById('cursor');
 
     this.loginState = 'BOOTING';
-    this.currentUsername = 'root';
+    this.currentUsername = 'guest';
     this.currentPath = [];
     this.commandHistory = [];
     this.historyIndex = -1;
@@ -544,7 +544,7 @@ export class Shell {
 
     audio.startHum();
 
-    const cmdText = 'ssh root@chenghao.li';
+    const cmdText = 'ssh ' + this.currentUsername + '@chenghao.li';
     let charIndex = 0;
 
     const typeEffect = setInterval(() => {
@@ -555,12 +555,12 @@ export class Shell {
         clearInterval(typeEffect);
 
         setTimeout(() => {
-          this.print('<span class="color-accent">C:\\Users\\cli&gt;</span> ssh root@chenghao.li');
+          this.print('<span class="color-accent">C:\\Users\\cli&gt;</span> ssh ' + this.currentUsername + '@chenghao.li');
           this.inputDisplay.textContent = '';
 
           audio.playBootChime();
           this.printMOTD();
-          this.promptPrefix.innerHTML = `<span class="color-accent"><span class="red">root</span>@chenghao.li</span>:<span class="color-dir">~</span>#`;
+          this.promptPrefix.innerHTML = `<span class="color-accent"><span class="red">${this.currentUsername}</span>@chenghao.li</span>:<span class="color-dir">~</span>#`;
 
           setTimeout(() => {
             const lsText = 'ls # click items to navigate, or use cat/cd';
@@ -643,7 +643,7 @@ export class Shell {
     `;*/
 
     this.print(`Arch Linux 6.9.3-arch1-1 (tty1)`, 'color-dim');
-    this.print(`\n  >>> <span class="blue">Welcome, root@chenghao.li!</span> <<<`, 'color-accent');
+    this.print(`\n  >>> <span class="blue">Welcome, ${this.currentUsername}@chenghao.li!</span> <<<`, 'color-accent');
     this.print(asciiArt, 'color-accent motd-ascii-art');
     this.printBuddyBox();
     this.print(`
