@@ -63,8 +63,6 @@ export class BaseEditor {
     this.textarea.spellcheck = false;
     this.textarea.autocomplete = 'off';
     this.textarea.value = this.content;
-    this.textarea.selectionStart = 0;
-    this.textarea.selectionEnd = 0;
 
     this.shell.body.appendChild(this.container);
     this.shell.body.appendChild(this.textarea);
@@ -75,6 +73,8 @@ export class BaseEditor {
     });
 
     this.textarea.focus();
+    this.textarea.selectionStart = 0;
+    this.textarea.selectionEnd = 0;
   }
 
   start(contentSelector, lineSelector, lineInnerHtml) {
@@ -166,7 +166,10 @@ export class BaseEditor {
     const selStart = this.textarea.selectionStart;
     const selEnd = this.textarea.selectionEnd;
 
-    const rawLines = text.split('\n');
+    let rawLines = text.split('\n');
+    if (rawLines.length > 1 && rawLines[rawLines.length - 1] === '' && selStart < text.length) {
+      rawLines.pop();
+    }
     let curLine = 0;
     let curCol = 0;
 
