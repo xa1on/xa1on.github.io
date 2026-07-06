@@ -5,6 +5,12 @@ const MODEL_ID = "Qwen2.5-0.5B-Instruct-q4f16_1-MLC";
 const SYSTEM_PROMPT = "youre just a helpful guy.";
 
 export const llm = {
+  name: 'llm',
+  description: 'Interact with a local in-browser LLM via WebGPU.',
+  category: 'general',
+  args: [
+    { name: 'prompt', description: 'Optional initial prompt for the AI agent.', required: false }
+  ],
   run: async (args, shell) => {
     // 1. WebGPU Support Verification
     if (!navigator.gpu) {
