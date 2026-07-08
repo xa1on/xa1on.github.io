@@ -19,16 +19,19 @@ export const cat = {
       shell.print(`cat: ${fileArg}: Is a directory`, 'color-error');
     } else {
       const fileName = resolved[resolved.length - 1];
-      if (fileName.endsWith('.html')) {
+      const lowerName = fileName.toLowerCase();
+      const isImage = lowerName.endsWith('.png') ||
+                      lowerName.endsWith('.jpg') ||
+                      lowerName.endsWith('.jpeg') ||
+                      lowerName.endsWith('.gif') ||
+                      lowerName.endsWith('.webp') ||
+                      lowerName.endsWith('.svg') ||
+                      lowerName.endsWith('.ico');
+
+      if (isImage) {
         const hash = shell.fileSystem.isBuiltInPath(resolved) ? shell.fileSystem.getNodeByPath(resolved) : '';
-        const filePath = resolved.join('/') + (typeof hash === 'string' && hash ? '?v=' + hash : '');
-        shell.print(`Opening ${fileName} in a new tab...`);
-        const newTab = window.open(filePath, '_blank');
-        if (!newTab) {
-          shell.print(`Popup blocked. Please click to open: <a href="${filePath}" target="_blank" class="color-link">[Open ${fileName}]</a>`, 'color-error');
-        } else {
-          shell.print(`<a href="${filePath}" target="_blank" class="color-link">[Fallback link: Click here if the page did not open]</a>`);
-        }
+        const filePath = resolved.join('/') + (typeof hash === 'string' && hash && hash !== 'core' ? '?v=' + hash : '');
+        shell.print(`<img src="${filePath}" class="terminal-image" alt="${shell.escapeHTML(fileName)}">`);
         return;
       }
 

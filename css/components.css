@@ -151,3 +151,16 @@
   outline-color: var(--link-color);
   box-shadow: 0 0 8px rgb(from var(--link-color) r g b / 0.5);
 }
+
+/* ==========================================
+   Terminal Inline Image Rendering
+   ========================================== */
+.terminal-image {
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  display: block;
+  margin: 10px 0;
+  border: 1px solid var(--dim-color);
+  border-radius: 4px;
+}
