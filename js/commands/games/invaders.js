@@ -1,4 +1,4 @@
-import { audio } from '../../../js/audio.js';
+import { audio } from '../../audio.js';
 
 export const invaders = {
   name: 'invaders',
