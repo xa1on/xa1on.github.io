@@ -773,7 +773,7 @@ export class Shell {
 
     await new Promise(resolve => setTimeout(resolve, 600));
 
-    const lsText = 'ls # click items to navigate, or use cat/cd';
+    const lsText = 'ls # click items to navigate, or use cat/cd (check out info!)';
     await this.typeCommand(lsText, 50);
 
     await new Promise(resolve => setTimeout(resolve, 400));
@@ -781,6 +781,6 @@ export class Shell {
     this.loginState = 'LOGGED_IN';
     this.input.disabled = false;
     audio.fadeHumQuiet();
-    await this.handleInputSubmit('ls # click items to navigate, or use cat/cd');
+    await this.handleInputSubmit('ls # click items to navigate, or use cat/cd (check out info!)');
   }
 }

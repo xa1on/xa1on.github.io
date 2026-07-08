@@ -1,17 +1,5 @@
-export const virtualFS = {
-  "about.md": "file",
-  "contact.md": "file",
-  "archive": {
-    // ?????
-  },
-  "projects.md": "file",
-  "sokoban": {
-    "level1.txt": "file",
-    "level2.txt": "file",
-    "level3.txt": "file",
-    "README.md": "file"
-  }
-};
+import { virtualFS } from './fs_manifest.js';
+export { virtualFS };
 
 
 
@@ -121,7 +109,7 @@ export class FileSystem {
 
   async readFile(pathArr) {
     if (this.isBuiltInPath(pathArr)) {
-      const filePath = 'server_root/' + pathArr.join('/');
+      const filePath = pathArr.join('/');
       const response = await fetch(filePath);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

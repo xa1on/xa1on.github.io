@@ -8,7 +8,7 @@ function getFiles(dir, fileList = []) {
   for (const file of files) {
     const name = pathModule.join(dir, file);
     if (fs.statSync(name).isDirectory()) {
-      if (file !== '.git' && file !== 'node_modules' && file !== 'server_root' && file !== 'scripts') {
+      if (file !== '.git' && file !== 'node_modules' && file !== 'scripts') {
         getFiles(name, fileList);
       }
     } else {

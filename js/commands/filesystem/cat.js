@@ -20,7 +20,7 @@ export const cat = {
     } else {
       const fileName = resolved[resolved.length - 1];
       if (fileName.endsWith('.html')) {
-        const filePath = 'server_root/' + resolved.join('/');
+        const filePath = resolved.join('/');
         shell.print(`Opening ${fileName} in a new tab...`);
         const newTab = window.open(filePath, '_blank');
         if (!newTab) {
