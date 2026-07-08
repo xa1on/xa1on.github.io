@@ -8,6 +8,7 @@ export const llm = {
   name: 'llm',
   description: 'Interact with a local in-browser LLM via WebGPU.',
   category: 'general',
+  lazy: true,
   args: [
     { name: 'prompt', description: 'Optional initial prompt for the AI agent.', required: false }
   ],

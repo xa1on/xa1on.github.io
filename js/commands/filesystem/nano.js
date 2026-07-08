@@ -5,6 +5,7 @@ export const nano = {
   name: 'nano',
   description: 'Edit a text file using the nano terminal editor.',
   category: 'filesystem',
+  lazy: true,
   args: [
     { name: 'filename', description: 'File to edit or create.', required: true }
   ],

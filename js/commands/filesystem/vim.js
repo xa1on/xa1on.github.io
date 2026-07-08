@@ -5,6 +5,7 @@ export const vim = {
   name: 'vim',
   description: 'Edit a text file using the vim terminal editor.',
   category: 'filesystem',
+  lazy: true,
   args: [
     { name: 'filename', description: 'File to edit or create.', required: true }
   ],

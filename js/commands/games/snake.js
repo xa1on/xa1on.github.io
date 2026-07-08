@@ -4,6 +4,7 @@ export const snake = {
   name: 'snake',
   description: 'Play a game of Snake.',
   category: 'game',
+  lazy: true,
   args: [
     { name: 'difficulty', description: 'Difficulty level (easy, medium, hard).', required: false, suggestions: ['easy', 'medium', 'hard'] }
   ],

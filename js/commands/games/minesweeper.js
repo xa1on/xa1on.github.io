@@ -4,6 +4,7 @@ export const minesweeper = {
   name: 'minesweeper',
   description: 'Play a game of Minesweeper.',
   category: 'game',
+  lazy: true,
   args: [
     { name: 'difficulty', description: 'Difficulty level (easy, medium, hard, or custom <cols> <rows> <mines>).', required: false, suggestions: ['easy', 'medium', 'hard', 'custom'] }
   ],

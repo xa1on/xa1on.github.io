@@ -1,6 +1,21 @@
 const fs = require('fs');
 const crypto = require('crypto');
 const pathModule = require('path');
+const { pathToFileURL } = require('url');
+
+// Mock browser globals for Node.js import evaluation
+global.localStorage = {
+  getItem: () => null,
+  setItem: () => null
+};
+global.document = {
+  addEventListener: () => null,
+  removeEventListener: () => null
+};
+global.window = {
+  AudioContext: class {},
+  webkitAudioContext: class {}
+};
 
 const IGNORED_NAMES = new Set([
   '.git',
@@ -13,7 +28,8 @@ const IGNORED_NAMES = new Set([
 const IGNORED_PATHS = new Set([
   'archive/index.html',
   '.gitignore',
-  'js/fs_manifest.js'
+  'js/fs_manifest.js',
+  'js/commands/index.js'
 ]);
 
 // Core files that form a dependency cycle with fs_manifest.js
@@ -95,10 +111,87 @@ export const virtualFS = ${JSON.stringify(vfsTree, null, 2)};
 `;
 }
 
-function runCacheBuster() {
+async function generateCommandsIndexContent() {
+  const commandsDir = pathModule.join(__dirname, '..', 'js', 'commands');
+  const categories = ['general', 'filesystem', 'audio', 'games'];
+  const imports = [];
+  const eagerCommands = [];
+  const lazyCommands = [];
+
+  for (const category of categories) {
+    const categoryDir = pathModule.join(commandsDir, category);
+    if (!fs.existsSync(categoryDir)) continue;
+
+    const files = fs.readdirSync(categoryDir);
+    for (const file of files) {
+      if (!file.endsWith('.js')) continue;
+
+      const cmdName = file.slice(0, -3);
+      const filePath = pathModule.join(categoryDir, file);
+      const fileUrl = pathToFileURL(filePath).href;
+
+      try {
+        const module = await import(fileUrl);
+        const cmd = module[cmdName];
+        if (!cmd) {
+          console.warn(`Command export not found for ${cmdName} in ${filePath}`);
+          continue;
+        }
+
+        const cleanCategory = category === 'games' ? 'game' : category;
+
+        if (cmd.lazy) {
+          lazyCommands.push({
+            name: cmdName,
+            description: cmd.description || '',
+            category: cleanCategory,
+            args: cmd.args || [],
+            importPath: `./${category}/${file}`
+          });
+        } else {
+          imports.push(`import { ${cmdName} } from './${category}/${file}';`);
+          eagerCommands.push(cmdName);
+        }
+      } catch (err) {
+        console.error(`Failed to import command file ${filePath}:`, err);
+      }
+    }
+  }
+
+  // Format imports section
+  let content = `// Eagerly loaded core and helper commands
+${imports.join('\n')}
+
+export const commands = {
+  // Eagerly loaded
+${eagerCommands.map(name => `  ${name},`).join('\n')}
+
+  // Lazy loaded commands (loaded on-demand and preloaded in background on boot)
+`;
+
+  // Format lazy commands
+  const formattedLazy = lazyCommands.map(cmd => {
+    return `  ${cmd.name}: {
+    name: '${cmd.name}',
+    description: ${JSON.stringify(cmd.description)},
+    category: '${cmd.category}',
+    args: ${JSON.stringify(cmd.args, null, 4).replace(/\n/g, '\n    ')},
+    lazy: true,
+    import: () => import('${cmd.importPath}')
+  }`;
+  }).join(',\n');
+
+  content += formattedLazy + '\n};\n';
+  return content;
+}
+
+async function runCacheBuster() {
   const files = getFiles('.');
   if (!files.includes('js/fs_manifest.js')) {
     files.push('js/fs_manifest.js');
+  }
+  if (!files.includes('js/commands/index.js')) {
+    files.push('js/commands/index.js');
   }
 
   // Initialize file hashes with raw contents
@@ -123,7 +216,18 @@ function runCacheBuster() {
     stable = true;
     iterations++;
 
-    // 1. Regenerate VFS manifest in-memory using the current fileHashes
+    // 1. Regenerate commands/index.js in-memory
+    const newIndexContent = await generateCommandsIndexContent();
+    if (fileContents['js/commands/index.js'] !== newIndexContent) {
+      fileContents['js/commands/index.js'] = newIndexContent;
+      const newHash = getHash(newIndexContent);
+      if (fileHashes['js/commands/index.js'] !== newHash) {
+        fileHashes['js/commands/index.js'] = newHash;
+        stable = false; // Trigger another pass to propagate this updated index hash
+      }
+    }
+
+    // 2. Regenerate VFS manifest in-memory using the current fileHashes
     const vfsTree = buildVfsTree('.', fileHashes);
     const newManifestContent = generateManifestContent(vfsTree);
 
@@ -136,9 +240,9 @@ function runCacheBuster() {
       }
     }
 
-    // 2. Standard CSS and JS hash propagation
+    // 3. Standard CSS and JS hash propagation
     for (const file of files) {
-      if (file === 'js/fs_manifest.js') continue;
+      if (file === 'js/fs_manifest.js' || file === 'js/commands/index.js') continue;
 
       let content = fileContents[file];
       let originalContent = content;
@@ -193,9 +297,9 @@ function runCacheBuster() {
       }
       fs.writeFileSync(file, fileContents[file], 'utf8');
     }
-    console.log(`Cache busted and VFS manifest generated successfully using content hashes in ${iterations} passes.`);
+    console.log(`Cache busted, VFS manifest, and command index generated successfully in ${iterations} passes.`);
   } else {
-    console.log(`[Dry Run] Cache buster and VFS manifest calculated content hashes in ${iterations} passes.`);
+    console.log(`[Dry Run] Cache buster, VFS manifest, and command index calculated content hashes in ${iterations} passes.`);
     console.log(`Local run detected: files were NOT modified on disk.`);
     console.log(`To write these changes to your local files, run: node scripts/cache_buster.js --write`);
   }
@@ -205,9 +309,10 @@ module.exports = {
   getHash,
   buildVfsTree,
   generateManifestContent,
+  generateCommandsIndexContent,
   runCacheBuster
 };
 
 if (require.main === module) {
-  runCacheBuster();
+  runCacheBuster().catch(console.error);
 }

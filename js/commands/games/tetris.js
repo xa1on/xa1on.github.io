@@ -4,6 +4,7 @@ export const tetris = {
   name: 'tetris',
   description: 'Play a game of Tetris.',
   category: 'game',
+  lazy: true,
   args: [],
   run: async (args, shell) => {
     // Enter gameplay state

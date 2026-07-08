@@ -4,6 +4,7 @@ export const sokoban = {
   name: 'sokoban',
   description: 'Play a game of Sokoban.',
   category: 'game',
+  lazy: true,
   args: [
     { name: 'level_path', description: 'Path to custom level file.', required: false }
   ],

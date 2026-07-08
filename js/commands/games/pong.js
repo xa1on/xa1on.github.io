@@ -4,6 +4,7 @@ export const pong = {
   name: 'pong',
   description: 'Play a game of Pong.',
   category: 'game',
+  lazy: true,
   args: [
     { name: 'difficulty', description: 'Difficulty level (easy, medium, hard).', required: false, suggestions: ['easy', 'medium', 'hard'] }
   ],
