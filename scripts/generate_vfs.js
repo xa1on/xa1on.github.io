@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
+const crypto = require('crypto');
+
 const IGNORED_NAMES = new Set([
   '.git',
   '.github',
@@ -10,8 +12,13 @@ const IGNORED_NAMES = new Set([
 ]);
 
 const IGNORED_PATHS = new Set([
-  'archive/index.html'
+  'archive/index.html',
+  '.gitignore'
 ]);
+
+function getHash(content) {
+  return crypto.createHash('sha256').update(content).digest('hex').slice(0, 10);
+}
 
 function buildVfsTree(dir) {
   const tree = {};
@@ -32,7 +39,8 @@ function buildVfsTree(dir) {
     if (entry.isDirectory()) {
       tree[name] = buildVfsTree(fullPath);
     } else if (entry.isFile()) {
-      tree[name] = "file";
+      const content = fs.readFileSync(fullPath);
+      tree[name] = getHash(content);
     }
   }
   return tree;

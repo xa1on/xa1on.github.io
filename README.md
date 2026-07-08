@@ -12,4 +12,7 @@ cool (but optional) local web-llm integration, if you want to chat with a really
 * interactive features like audio fs and llm (and also [games](js/commands/games)!!!!)
 * fully-functional (mostly) `vim` and `nano` clones! all the files are stored in localStorage, so anything you create persists only on your device.
 
+### how to use
+* use `node scripts/generate_vfs.js` if you want to update the virtual filesystem manifest\
+
 visit the live terminal at [chenghao.li](https://chenghao.li)

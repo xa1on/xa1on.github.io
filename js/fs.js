@@ -109,7 +109,8 @@ export class FileSystem {
 
   async readFile(pathArr) {
     if (this.isBuiltInPath(pathArr)) {
-      const filePath = pathArr.join('/');
+      const hash = this.getNodeByPath(pathArr);
+      const filePath = pathArr.join('/') + (typeof hash === 'string' ? '?v=' + hash : '');
       const response = await fetch(filePath);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

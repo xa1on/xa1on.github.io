@@ -20,7 +20,8 @@ export const cat = {
     } else {
       const fileName = resolved[resolved.length - 1];
       if (fileName.endsWith('.html')) {
-        const filePath = resolved.join('/');
+        const hash = shell.fileSystem.isBuiltInPath(resolved) ? shell.fileSystem.getNodeByPath(resolved) : '';
+        const filePath = resolved.join('/') + (typeof hash === 'string' && hash ? '?v=' + hash : '');
         shell.print(`Opening ${fileName} in a new tab...`);
         const newTab = window.open(filePath, '_blank');
         if (!newTab) {
@@ -33,7 +34,7 @@ export const cat = {
 
       try {
         const content = await shell.fileSystem.readFile(resolved);
-        const output = fileName.endsWith('.md') ? shell.parseMarkdown(content) : shell.escapeHTML(content);
+        const output = fileName.endsWith('.md') ? shell.parseMarkdown(content, resolved.slice(0, -1)) : shell.escapeHTML(content);
         shell.print(output);
       } catch (err) {
         shell.print(`cat: error reading ${fileArg}: ${err.message}`, 'color-error');

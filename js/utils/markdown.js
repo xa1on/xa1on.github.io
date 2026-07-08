@@ -1,3 +1,5 @@
+import { resolvePath, getNodeByPath } from '../fs.js';
+
 export function escapeHTML(str) {
   return str
     .replace(/&/g, '&amp;')
@@ -59,7 +61,7 @@ const getVisibleLength = (htmlStr) => {
   return unescaped.length;
 };
 
-const parseInline = (line) => {
+const parseInline = (line, vfs = {}, basePathArr = []) => {
   const sanitized = sanitizeHTML(line);
 
   let processed = sanitized;
@@ -69,15 +71,27 @@ const parseInline = (line) => {
     if (/^javascript:/i.test(cleanHref)) {
       return `<span class="color-text" title="Blocked: javascript link">${text}</span>`;
     }
+
+    const isAbsoluteUrl = /^(https?:\/\/|mailto:|tel:|#)/i.test(cleanHref);
+    if (!isAbsoluteUrl) {
+      const resolved = resolvePath(vfs, basePathArr, cleanHref);
+      if (resolved !== null) {
+        const node = getNodeByPath(vfs, resolved);
+        const type = typeof node === 'object' ? 'dir' : 'file';
+        const absolutePath = '/' + resolved.join('/');
+        return `<span class="color-link ls-item" data-type="${type}" data-path="${absolutePath}">${text}</span>`;
+      }
+    }
+
     return `<a href="${cleanHref}" class="color-link" target="_blank">${text}</a>`;
   });
   processed = processed.replace(/\`(.*?)\`/g, '<span class="color-accent">$1</span>');
   return processed;
 };
 
-function renderTextTable(tableLines) {
+function renderTextTable(tableLines, vfs = {}, basePathArr = []) {
   if (tableLines.length < 2) {
-    return tableLines.map(line => `<div>${parseInline(line)}</div>`).join('\n');
+    return tableLines.map(line => `<div>${parseInline(line, vfs, basePathArr)}</div>`).join('\n');
   }
 
   const parseRow = (rowStr) => {
@@ -94,7 +108,7 @@ function renderTextTable(tableLines) {
   const separatorCells = parseRow(separatorLine);
   const isValidSeparator = separatorCells.every(cell => /^[:\-\s]+$/.test(cell));
   if (!isValidSeparator) {
-    return tableLines.map(line => `<div>${parseInline(line)}</div>`).join('\n');
+    return tableLines.map(line => `<div>${parseInline(line, vfs, basePathArr)}</div>`).join('\n');
   }
 
   const alignments = separatorCells.map(cell => {
@@ -120,7 +134,7 @@ function renderTextTable(tableLines) {
   const parsedRows = allRows.map(row => {
     const parsedRow = [];
     for (let c = 0; c < maxCols; c++) {
-      const htmlText = c < row.length ? parseInline(row[c]) : '';
+      const htmlText = c < row.length ? parseInline(row[c], vfs, basePathArr) : '';
       parsedRow.push({
         htmlText,
         visibleLength: getVisibleLength(htmlText)
@@ -185,7 +199,7 @@ function renderTextTable(tableLines) {
   return `<pre class="markdown-table-text">${outputRows.join('\n')}</pre>`;
 }
 
-export function parseMarkdown(text) {
+export function parseMarkdown(text, vfs = {}, basePathArr = []) {
   if (typeof text !== 'string') return '';
 
   const lines = text.split('\n');
@@ -313,7 +327,7 @@ export function parseMarkdown(text) {
   const renderedBlocks = blocks.map(block => {
     switch (block.type) {
       case 'header': {
-        return `<div><span class="color-accent">${parseInline(block.content)}</span></div>`;
+        return `<div><span class="color-accent">${parseInline(block.content, vfs, basePathArr)}</span></div>`;
       }
       case 'hr': {
         return '<hr class="markdown-hr">';
@@ -326,10 +340,10 @@ export function parseMarkdown(text) {
         return `<pre class="markdown-code-block"><code>${escapedCode}</code></pre>`;
       }
       case 'table': {
-        return renderTextTable(block.lines);
+        return renderTextTable(block.lines, vfs, basePathArr);
       }
       case 'list': {
-        return block.lines.map(line => `<div>${parseInline(line)}</div>`).join('');
+        return block.lines.map(line => `<div>${parseInline(line, vfs, basePathArr)}</div>`).join('');
       }
       case 'paragraph': {
         let paragraphText = '';
@@ -347,7 +361,7 @@ export function parseMarkdown(text) {
             paragraphText += '<br>';
           }
         }
-        return `<div>${parseInline(paragraphText)}</div>`;
+        return `<div>${parseInline(paragraphText, vfs, basePathArr)}</div>`;
       }
       default:
         return '';

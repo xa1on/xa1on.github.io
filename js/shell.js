@@ -478,8 +478,8 @@ export class Shell {
     });
   }
 
-  parseMarkdown(text) {
-    return parseMarkdown(text);
+  parseMarkdown(text, basePathArr = []) {
+    return parseMarkdown(text, this.fileSystem ? this.fileSystem.root : {}, basePathArr);
   }
 
   escapeHTML(text) {
