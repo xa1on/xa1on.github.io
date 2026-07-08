@@ -16,6 +16,7 @@ import { mute } from './audio/mute.js';
 import { unmute } from './audio/unmute.js';
 import { buddies } from './general/buddies.js';
 import { echo } from './general/echo.js';
+import { sudo } from './general/sudo.js';
 
 export const commands = {
   // Eagerly loaded
@@ -36,6 +37,7 @@ export const commands = {
   unmute,
   buddies,
   echo,
+  sudo,
 
   // Lazy loaded commands (loaded on-demand and preloaded in background on boot)
   llm: { name: 'llm', category: 'general', lazy: true, import: () => import('./general/llm.js') },
